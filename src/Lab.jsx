@@ -7,7 +7,7 @@ import {IconButton,Modal,Status,download} from './ui.jsx';
 
 export function Terminal({entries,onCommand,command,setCommand,state,inputRef,history,level}){
  const bottom=useRef(null),[cursor,setCursor]=useState(history.length),[draft,setDraft]=useState(''),[completion,setCompletion]=useState('');
- useEffect(()=>{bottom.current?.scrollIntoView({block:'nearest'});},[entries]);
+ useEffect(()=>{const output=bottom.current?.parentElement;if(output)output.scrollTop=output.scrollHeight;},[entries]);
  useEffect(()=>{setCursor(history.length);},[history]);
  function key(e){
   if(e.key==='ArrowUp'){e.preventDefault();if(cursor===history.length)setDraft(command);const next=Math.max(0,cursor-1);setCursor(next);setCommand(history[next]||'');}

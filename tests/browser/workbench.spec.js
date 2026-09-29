@@ -4,7 +4,7 @@ import {levels} from '../../src/curriculum.js';
 async function command(page,text){await page.locator('#terminal-input').fill(text);await page.locator('#terminal-input').press('Enter');}
 async function freeExplore(page,id=1){await page.addInitScript(({id})=>{const p={version:1,completed:{},bookmarks:[],notes:{},quiz:{},active:id,days:[],settings:{free:true,reduced:true,speed:2,sound:false}};localStorage.setItem('learn-k8s:progress:v1',JSON.stringify(p));},{id});await page.goto(`/#level=${id}`);}
 test('first lesson, errors, reward, persistence and no duplicate XP',async({page},info)=>{
- await page.goto('/');await expect(page.locator('h1')).toHaveText(levels[0].title);
+ await page.goto('/');await expect(page.locator('h1')).toHaveText(levels[0].title);expect(await page.evaluate(()=>scrollY)).toBe(0);
  await page.screenshot({path:`test-results/${info.project.name}-01-start.png`,fullPage:true});
  await command(page,'docker magic');await expect(page.locator('.mission-heading>b')).toHaveText('0/2');await expect(page.locator('.terminal-error')).toBeVisible();
  await command(page,'docker pull nginx:1.27');await expect(page.locator('.mission-heading>b')).toHaveText('1/2');
@@ -35,6 +35,5 @@ test('keyboard search and key WCAG checks',async({page},info)=>{
  await page.keyboard.press('Control+k');await expect(page.getByRole('dialog')).toBeVisible();await page.getByLabel('Seviye ara').fill('CronJob');await expect(page.locator('.course-row').first()).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
  const results=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
  await test.info().attach('accessibility.json',{body:JSON.stringify(results.violations,null,2),contentType:'application/json'});
- expect(results.violations.filter(v=>v.id!=='color-contrast')).toEqual([]);
- // Contrast evidence is retained for review; visual token adjustments are independent of functional gates.
+ expect(results.violations).toEqual([]);
 });

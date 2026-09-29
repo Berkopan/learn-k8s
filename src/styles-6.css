@@ -1,0 +1,81 @@
+/* Semantic color pairs: readable labels on warm paper, never faded essential text. */
+.brand small,.sidebar-label,.sidebar-label span,.module-number,
+.module-nav-item small,.module-nav-item.active small,.sidebar-search,
+.journey-progress span,.journey-progress p,
+.sidebar-tools>button:not(.icon-button),.breadcrumbs,.breadcrumbs button,.mode-label,
+.lesson-kicker,.lesson-number,.lesson-subline,.path-end span,
+.note-heading,.note-heading b,.mechanism-bubble>span,.mission-heading>b,
+.task-status,.solution-button,.personal-notes summary,.personal-notes summary>span,
+.lesson-pagination button,.simulation-label,.page-footer,.page-footer button{
+  color:#53664b;
+}
+.lesson-subline>span:nth-child(2),.path-end,.caution-note summary,.caution-note p{
+  color:#806139;
+}
+.level-path>button:not(:disabled):not(.selected):not(.done){color:#53664b}
+.task-future{opacity:1}
+.task-future p,.task-done p{color:#53664b!important}
+.control-item small,.plane-label,.plane-label span,.control-wire>span,
+.workload-chip,.workload-chip span,.workload-chip strong,.node-meta,
+.pod-card small,.pod-count,.kubelet,.kubelet span,.empty-node,
+.diagram-caption,.diagram-caption>span:last-child,
+.trace-heading small,.trace-heading select,.trace-heading .text-button,
+.trace-actor,.trace-content p,.eyebrow,.tab-list>button,
+.tab-list>button>span,.registry-block span,.empty-slot,.image-store .node-title>span,
+.diagram-connector,.diagram-connector span,.container-chip small,
+.docker-topology>.diagram-caption,.service-card span,.service-card strong,
+.related-resources>button,.related-resources b,.file-toolbar span,
+.file-toolbar select,.file-footer>span,.new-file input,.text-button,
+.empty-files,.empty-files p,.resource-list th,.resource-list td,
+.resource-list td small,.kind-tag{color:#4b633e}
+.not-ready small,.not-ready .pod-count,.pod-card.not-ready b,
+.pending-row>span,.cordoned .node-meta,.status.warn{color:#805d28}
+.tab-list>button[data-state=active]{color:#295f49}
+.trace-actor.error,.inline-error,.terminal-error:not(.terminal-entry){color:#8b4634}
+.terminal-error pre{color:#e7b38b}
+.dialog-heading p,.dialog-footnote,.filter-row select,.filter-row>span,
+.course-id,.course-row div small,.course-row div p,
+.glossary-grid article>span,.glossary-grid p,.badge-card p,
+.setting-row small,.data-section p,.about-body p,.guided-completion,
+.reward-meta>span,.quiz-box p,.quiz-box>button,.fine-print,
+.inspector-summary,.inspector-message,.hint-bubble,.solution-box>span,
+.mission-success p>span,.empty-message{color:#53664b}
+.course-row:not(:disabled){opacity:1}
+.badge-card{opacity:1}
+.button.secondary{color:#3e6334}
+.quiz-box>button.correct{color:#315c29}
+.quiz-box>button.incorrect,.danger-link{color:#805329}
+.reward-meta strong{color:#88612b}
+.search-field input::placeholder,.new-file input::placeholder,
+.personal-notes textarea::placeholder{color:#607153}
+.status.good{color:#3d602c}
+.terminal-bar b{color:#adc292}
+.terminal-input-row input::placeholder{color:#9bb389}
+.terminal-input-row input{outline-offset:2px}
+.control-item b{font-size:10px}
+.control-item small{font-size:9px;white-space:normal;line-height:1.4}
+.node-meta,.pod-card small,.pod-count,.kubelet,.diagram-caption,
+.diagram-caption>span:last-child,.workload-chip span,.workload-chip strong,
+.plane-label,.plane-label span,.control-wire>span,.trace-heading small,
+.trace-heading .text-button,.trace-actor,.service-card span,
+.service-card strong,.related-resources>button,.related-resources b{font-size:9px}
+.trace-content p{font-size:11px}
+.diagram-caption{flex-wrap:wrap;line-height:1.5}
+.pod-card b{font-size:10px}
+.terminal-output{scroll-behavior:auto;overscroll-behavior:contain}
+.skip-link{opacity:0;pointer-events:none}
+.skip-link:focus{opacity:1;pointer-events:auto}
+@media(max-width:760px){
+  .control-components{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .control-item{padding:8px;gap:6px}
+  .control-item b{font-size:11px}
+  .control-item small{font-size:9px;display:block}
+  .node-meta{flex-wrap:wrap;line-height:1.5;font-size:9px}
+  .pod-card b{font-size:9px;max-width:110px}
+  .pod-card small{font-size:9px;overflow-wrap:anywhere}
+  .pod-count{font-size:8px}
+  .trace-heading .icon-button{min-height:32px;min-width:32px}
+  .terminal-footer{font-size:8px}
+  .icon-button{min-height:32px}
+  .level-path>button{min-height:32px}
+}
