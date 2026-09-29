@@ -1,0 +1,76 @@
+.pod-count{font-size:8px;color:#6e8c52}
+.control-item b{font-size:9px;color:#4e6d3d}
+.control-item small{font-size:7px;color:#7c9469}
+.plane-label,.plane-label span{color:#799466}
+.control-wire>span{color:#829970}
+.empty-node{color:#869d72}
+.trace-content p{font-size:10px;color:#64824e}
+.trace-actor{font-size:8px;color:#688849}
+.trace-heading small,.trace-heading .text-button,.trace-heading select{color:#758e5e}
+.eyebrow{color:#748e5c}
+.tab-list>button{color:#80996a}
+.tab-list>button[data-state=active]{color:#527837}
+.terminal-entry,.terminal-input-row input{font-size:12px}
+.terminal-entry pre{font-size:11px;color:#a1b88b}
+.terminal-welcome p{font-size:10px;color:#91a97b}
+.terminal-welcome>span{font-size:10px}
+.terminal-bar{color:#94ae7c;font-size:9px}
+.terminal-footer{font-size:8px;color:#9cb384}
+.terminal-tag{color:#96b37b;font-size:7px}
+.terminal-error pre{color:#e7b38b}
+.registry-block span,.empty-slot{font-size:10px;color:#829b6c}
+.image-item code{font-size:10px;color:#54753c}
+.container-chip small{font-size:9px;color:#79965f}
+.container-chip>div>b{font-size:10px;color:#527437}
+.diagram-caption{font-size:8px;color:#869d70}
+.diagram-caption>span:last-child{font-size:7px}
+.service-card b{font-size:10px;color:#4b7236}
+.service-card span{font-size:8px;color:#7a9860}
+.service-card strong{font-size:8px;color:#729554}
+.related-resources>button{font-size:8px;color:#8ba475}
+.related-resources b{font-size:9px;color:#6f934d}
+.file-toolbar span,.file-footer>span{font-size:9px;color:#79985b}
+.dialog-heading p{font-size:12px;color:#79975f}
+.dialog-footnote{font-size:10px;color:#79975b}
+.course-row div strong{font-size:13px;color:#507c32}
+.course-row div small,.course-row div p{font-size:10px;color:#7c9b5e}
+.course-id{color:#8ba971}
+.course-row:disabled{opacity:.65}
+.search-field input{color:#5c803f}
+.search-field input::placeholder{color:#92a97a}
+.filter-row select,.filter-row>span{color:#6e914e}
+.glossary-grid p{font-size:12px;color:#688d46}
+.glossary-grid article>span{color:#829f63}
+.glossary-grid h3{font-size:14px;color:#517b31}
+.cheat-grid pre{font-size:10px;color:#5d833a}
+.cheat-grid h3{color:#517b30}
+.badge-card h3{color:#5e8539}
+.badge-card p{color:#789b4f}
+.badge-card{opacity:.75}
+.setting-row small,.data-section p,.about-body p{font-size:12px;color:#72924e}
+.setting-row b,.data-section h3,.about-body h3{color:#527b2d}
+.danger-link{color:#9c7046}
+.reward-meta>span,.guided-completion{color:#8b9f6b}
+.reward-body>p{color:#5f8037}
+.quiz-box>button{font-size:12px;color:#70934d}
+.quiz-box h3{font-size:13px;color:#557e2f}
+.quiz-box p{font-size:11px;color:#6b9041}
+.fine-print{font-size:10px;color:#839e5c}
+.resource-list td{font-size:9px;color:#7b9b56}
+.resource-list td button{font-size:10px;color:#5a8234}
+.resource-list th,.resource-list td small{color:#86a463}
+.kind-tag{font-size:8px;color:#709348}
+.button.secondary{color:#678b43}
+.text-button{color:#6d8f43}
+.status.good{color:#5c7f36}
+.status.warn{color:#94723a}
+.inspector-summary{color:#6f9145}
+.inspector-message{color:#7c8040}
+.badge-card small{color:#638835}
+.hint-bubble{color:#6b7b4c}
+.personal-notes textarea{font-size:12px;color:#587143}
+.toast{font-size:12px}
+.workspace-heading .live-dot{box-shadow:0 0 0 3px #edf3e4}
+@media(min-width:1221px){.terminal-output{height:260px}.topbar .reference-button{font-size:11px}.module-nav-item{padding-top:11px;padding-bottom:11px}.sidebar-tools>button:not(.icon-button){font-size:11px}}
+@media(max-width:1220px){.control-item b{font-size:8px}.control-item small{font-size:7px}.pod-card b{font-size:8px;max-width:120px}.node-meta{font-size:7px}.related-resources>button{font-size:7px}.related-resources b{font-size:8px}.terminal-entry pre{font-size:10px}}
+@media(max-width:760px){.terminal-input-row input{font-size:16px}.module-nav-item div>span{font-size:13px}.field-note>p,.task-list li p{font-size:13px}.control-item b{font-size:8px}.control-item small{font-size:6.5px}.pod-card b{font-size:8px;max-width:110px}.pod-card small{font-size:7px}.pod-count{font-size:7px}.node-meta{font-size:7px}.node-title b{font-size:10px}.related-resources b{font-size:8px}.related-resources>button{font-size:7px}.terminal-footer{font-size:7px}.diagram-caption>span:last-child{display:none}.registry-block span,.empty-slot{font-size:9px}.image-item code{font-size:9px}.container-chip small{font-size:8px}.simulation-label{font-size:8px}}
