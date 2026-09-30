@@ -1,0 +1,19 @@
+/* A compact, persistent navigation bar; the learning workspace has no sidebar. */
+.masthead { position:sticky; top:0; z-index:30; background:var(--recess); border-bottom:1px solid var(--line); }
+.masthead-inner { max-width:1440px; min-height:76px; padding:0 40px; margin:auto; display:flex; align-items:center; gap:36px; }
+.brand { display:flex; align-items:center; gap:12px; text-decoration:none; flex-shrink:0; }
+.brand strong { display:block; font:700 25px/1.1 var(--serif); letter-spacing:-.6px; }
+.brand small { display:block; color:var(--accent); font-size:9px; letter-spacing:2.4px; margin-top:5px; }
+.global-nav { display:flex; gap:24px; align-self:stretch; }
+.global-nav button { display:flex; align-items:center; gap:7px; position:relative; color:var(--muted); font-size:13px; white-space:nowrap; }
+.global-nav button:hover { color:var(--ink); }
+.global-nav button[aria-current='page'] { color:var(--accent); }
+.global-nav button[aria-current='page']:after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:2px; background:var(--accent); }
+.masthead-tools { margin-left:auto; display:flex; gap:12px; align-items:center; }
+.xp-counter { display:flex; align-items:center; gap:6px; color:var(--accent); font:600 13px var(--mono); white-space:nowrap; }
+.xp-counter small { font:11px var(--sans); }
+.theme-switch { display:flex; padding:3px; gap:2px; border:1px solid var(--line); border-radius:5px; background:var(--canvas); }
+.theme-switch button { height:30px; width:30px; display:grid; place-items:center; border-radius:3px; color:var(--muted); }
+.theme-switch button:hover { color:var(--ink); }
+.theme-switch button[aria-pressed='true'] { background:var(--accent-soft); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent-line); }
+.main { min-height:calc(100vh - 155px); }

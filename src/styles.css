@@ -1,6 +1,9 @@
-@import './styles-1.css';
-@import './styles-2.css';
-@import './styles-3.css';
-@import './styles-4.css';
-@import './styles-5.css';
-@import './styles-6.css';
+/* Kubernetes Expeditions: shared tokens, distinct day and night palettes. */
+@import './styles/tokens.css';
+@import './styles/navigation.css';
+@import './styles/atlas.css';
+@import './styles/lesson.css';
+@import './styles/topology.css';
+@import './styles/terminal.css';
+@import './styles/dialogs.css';
+@import './styles/responsive.css';

@@ -20,14 +20,16 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Engine, curriculum and progress regression tests
+      - name: Engine, curriculum, theme and progress regression tests
         run: npm test
       - name: Build static site
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser, full curriculum and accessibility tests
-        run: npm run test:e2e
+        run: npm run test:e2e -- --reporter=list,html,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/summary.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -36,4 +38,5 @@ jobs:
             test-results/
             playwright-report/
             package-lock.json
+            dist/
           retention-days: 14
