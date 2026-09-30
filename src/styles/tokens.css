@@ -1,0 +1,64 @@
+/* Kubernetes Expeditions — see docs/DESIGN.md for the design brief. */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas:#101722; --surface:#182231; --recess:#121b29; --raised:#202d3e;
+  --ink:#ece7db; --muted:#a9b5c6; --faint:#94a3b7;
+  --line:#344155; --line-strong:#657287;
+  --accent:#e5b66f; --accent-ink:#182231; --accent-soft:#2c2b2a; --accent-line:#8e7149;
+  --good:#8dccb1; --good-soft:#1a302e; --bad:#f0a2a2; --bad-soft:#36262e;
+  --info:#9abfe4; --info-soft:#1d2d41;
+  --terminal:#0d1420; --terminal-ink:#c9d6e5; --terminal-muted:#93a6be; --terminal-bar:#182332;
+  --overlay:rgba(4,8,14,.78); --shadow:0 12px 40px rgba(0,0,0,.18);
+  --serif:Georgia,'Times New Roman',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+  --mono:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+}
+:root[data-theme='light'] {
+  color-scheme:light;
+  --canvas:#f3eee3; --surface:#fffcf5; --recess:#e9e2d4; --raised:#fffef9;
+  --ink:#202a36; --muted:#596575; --faint:#55606c;
+  --line:#c9c1b1; --line-strong:#8c8982;
+  --accent:#875322; --accent-ink:#fffaf0; --accent-soft:#efe0c9; --accent-line:#ae885c;
+  --good:#24694f; --good-soft:#e0ede4; --bad:#a63236; --bad-soft:#f6e2e0;
+  --info:#2c5e88; --info-soft:#e3ebf2;
+  --terminal:#e9e5dc; --terminal-ink:#263b4d; --terminal-muted:#485a6e; --terminal-bar:#e0dbd0;
+  --overlay:rgba(24,32,42,.6); --shadow:0 12px 40px rgba(44,37,23,.12);
+}
+* { box-sizing:border-box; }
+html { background:var(--canvas); scroll-padding-top:100px; }
+body { margin:0; font-family:var(--sans); color:var(--ink); background:var(--canvas); font-size:15px; line-height:1.6; }
+button,input,textarea,select { font:inherit; color:inherit; }
+button { cursor:pointer; background:none; border:0; padding:0; }
+button:disabled { cursor:not-allowed; }
+a { color:inherit; }
+svg { flex-shrink:0; vertical-align:middle; }
+h1,h2,h3,h4,p { margin:0; }
+h1,h2,h3,h4 { line-height:1.25; }
+button,a,input,textarea,select,summary { -webkit-tap-highlight-color:transparent; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+::selection { background:var(--accent); color:var(--accent-ink); }
+[hidden] { display:none !important; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+.skip-link { position:fixed; top:-80px; left:16px; z-index:200; padding:12px 20px; background:var(--accent); color:var(--accent-ink); }
+.skip-link:focus { top:12px; }
+.mono,kbd,code,pre { font-family:var(--mono); }
+.overline,.eyebrow { font:600 11px/1.5 var(--sans); letter-spacing:1.7px; color:var(--accent); }
+.mono { font-size:12px; color:var(--muted); }
+.tiny-diamond { display:inline-block; width:6px; height:6px; background:var(--accent); transform:rotate(45deg); margin-right:7px; }
+.helm { color:var(--accent); }
+.helm-center { fill:var(--surface); }
+.icon-button { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:4px; color:var(--muted); flex-shrink:0; }
+.icon-button:hover { background:var(--raised); color:var(--accent); }
+.icon-button[aria-pressed='true'] { color:var(--accent); background:var(--accent-soft); }
+.button { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:42px; padding:9px 18px; font-size:14px; font-weight:600; border:1px solid transparent; border-radius:4px; line-height:1.45; }
+.button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 0 var(--accent-line); }
+.button.primary:hover { filter:brightness(1.08); transform:translateY(-1px); }
+.button.primary:active { transform:translateY(1px); box-shadow:none; }
+.button.secondary { border-color:var(--line-strong); background:var(--surface); }
+.button.secondary:hover { border-color:var(--accent); }
+.button.small { min-height:36px; padding:7px 12px; font-size:12px; }
+.text-button { color:var(--muted); font-size:12px; text-decoration:underline; text-underline-offset:3px; }
+.text-button:hover { color:var(--accent); }
+.progress-track { height:5px; background:var(--line); overflow:hidden; border-radius:1px; }
+.progress-track>span { display:block; height:100%; background:var(--accent); transition:width .3s ease; }

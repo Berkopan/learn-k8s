@@ -1,4 +1,4 @@
-# learn-k8s
+# learn-k8s · Küme Seferleri
 
 **Kubernetes’i okuyarak değil, okuyup deneyerek öğren.**
 
@@ -6,7 +6,15 @@
 
 **Bu uygulama gerçek Kubernetes çalıştırmaz.** Tamamen statik bir React uygulamasıdır. Kubernetes, Docker ve Helm komutlarının desteklenen alt kümesi tarayıcı belleğindeki bir modeli değiştirir. Hesap, cloud kredisi, Docker daemon veya backend gerekmez.
 
-## Atölyede neler var?
+## Sefer haritası ve laboratuvar
+
+Ana sayfa dört aşamaya ayrılan bir öğrenme atlasıdır. On altı bölüm, sekiz duraklı devam rotası ve seyir defteri; sıradaki konuyu, tamamlanan seviyeleri, XP’yi ve kazanılan rozetleri gösterir. Laboratuvarda saha notları ve görev günlüğü, küme şeması ve terminalin yanında yer alır.
+
+**Karanlık, aydınlık ve sistem temaları** üst çubuktan seçilir. Gece lacivert/pirinç, gündüz parşömen/bakır paleti kullanılır. Terminal, YAML editörü, kaynak şemaları ve bütün diyaloglar temaya uyum sağlar. Tercih sonraki ziyaret için saklanır; sistem modu işletim sistemindeki değişiklikleri izler.
+
+Tema değiştirirken veya sefer haritasına gidip aynı laboratuvara dönerken komut taslağı, kaynaklar ve kaydedilmemiş YAML korunur. Mobil görünümde **Terminale geç** bağlantısı komut alanına doğrudan götürür. Tasarım kararları ve doğrulama planı: [docs/DESIGN.md](docs/DESIGN.md).
+
+## Neler var?
 
 - **16 modül × 8 seviye = 128 laboratuvar.** Her seviyede özgün kavram anlatımı, deneyin mekanizması, gerçek küme uyarısı, görevler, ipuçları, çözüm ve resmî kaynak bağlantısı.
 - **Durum temelli görevler.** Sadece beklenen komut metnine bakılmaz: kaynak, replica, readiness, endpoint, yetki veya gereken gözlem sonucuna bakılır.
@@ -50,14 +58,14 @@ npm run dev
 ```
 
 ```sh
-npm test          # Motor + 128 senaryo + ilerleme regresyonları
+npm test          # Motor + 128 senaryo + ilerleme + tema regresyonları
 npm run build    # GitHub Pages dahil statik sunucuya uygun dist/
 npm run preview
 npx playwright install chromium
-npm run test:e2e  # Gerçek tarayıcıda görev akışı, YAML ve responsive kontrolleri
+npm run test:e2e  # Görevler, iki tema, YAML, klavye ve responsive kontrolleri
 ```
 
-Tarayıcı testleri üretim derlemesini kullanır; önce `npm run build` çalıştır. `Test and inspect` GitHub Actions akışı derlemeyi ve tarayıcı kontrollerini birlikte çalıştırır. Ekran görüntüleri, izler ve erişilebilirlik bulguları `browser-evidence` artefaktında saklanır. Yayın ayrıntıları: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Tarayıcı testleri üretim derlemesini kullanır; önce `npm run build` çalıştır. `Test and inspect` GitHub Actions akışı derlemeyi ve tarayıcı kontrollerini birlikte çalıştırır. Testler tüm 128 seviyenin tamamlanmasını, iki palette erişilebilirlik/kontrast kontrollerini, tema kalıcılığını, sistem tercihini ve taslakların korunmasını kapsar. Ekran görüntüleri, izler, JSON özeti ve derleme `browser-evidence` artefaktında saklanır. Yayın ayrıntıları: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Dürüst sınırlar
 
@@ -75,4 +83,4 @@ Yeni senaryo eklemek veya bir model davranışını düzeltmek için [CONTRIBUTI
 
 ---
 
-**English:** A browser-only Kubernetes learning workbench with 128 guided labs, a stateful simulated terminal, animated cluster topology, editable YAML, and local learning progress. The interface and course are in Turkish. No real Kubernetes cluster or shell is started.
+**English:** A browser-only Kubernetes learning workbench with 128 guided labs, a maritime learning atlas, persistent light/dark/system themes, a stateful simulated terminal, animated cluster topology, editable YAML, and local learning progress. The interface and course are in Turkish. No real Kubernetes cluster or shell is started.
