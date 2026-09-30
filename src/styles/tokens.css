@@ -17,12 +17,12 @@
 :root[data-theme='light'] {
   color-scheme:light;
   --canvas:#f3eee3; --surface:#fffcf5; --recess:#e9e2d4; --raised:#fffef9;
-  --ink:#202a36; --muted:#596575; --faint:#616b76;
+  --ink:#202a36; --muted:#596575; --faint:#55606c;
   --line:#c9c1b1; --line-strong:#8c8982;
   --accent:#875322; --accent-ink:#fffaf0; --accent-soft:#efe0c9; --accent-line:#ae885c;
   --good:#24694f; --good-soft:#e0ede4; --bad:#a63236; --bad-soft:#f6e2e0;
   --info:#2c5e88; --info-soft:#e3ebf2;
-  --terminal:#e9e5dc; --terminal-ink:#263b4d; --terminal-muted:#55677a; --terminal-bar:#e0dbd0;
+  --terminal:#e9e5dc; --terminal-ink:#263b4d; --terminal-muted:#485a6e; --terminal-bar:#e0dbd0;
   --overlay:rgba(24,32,42,.6); --shadow:0 12px 40px rgba(44,37,23,.12);
 }
 * { box-sizing:border-box; }
