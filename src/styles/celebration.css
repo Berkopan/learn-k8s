@@ -1,0 +1,104 @@
+/* Completion-only motion: other dialogs keep their existing behavior. */
+.reward-overlay[data-state='open'] {
+  animation: reward-overlay-in 400ms ease-out both;
+}
+.reward-dialog {
+  z-index: 63;
+  border-color: var(--accent-line);
+  box-shadow: var(--shadow), inset 0 3px 0 var(--accent-line);
+}
+.reward-dialog[data-state='open'] {
+  animation: reward-dialog-in 480ms cubic-bezier(.2,.8,.2,1) both;
+}
+.reward-dialog .dialog-heading { border-top: 3px solid var(--accent-line); }
+.reward-dialog[data-state='open'] .reward-seal {
+  animation: reward-seal-in 520ms 70ms cubic-bezier(.16,1,.3,1) backwards;
+}
+.reward-dialog[data-state='open'] .reward-meta {
+  animation: reward-detail-in 380ms 120ms ease-out backwards;
+}
+.reward-dialog[data-state='open'] .reward-body > p {
+  animation: reward-detail-in 380ms 180ms ease-out backwards;
+}
+.reward-dialog[data-state='open'] .reward-next {
+  animation: reward-detail-in 320ms 240ms ease-out backwards;
+}
+.reward-dialog .reward-meta > span { color: var(--good); }
+.reward-dialog .reward-seal { position: relative; }
+.reward-dialog .reward-seal::before,
+.reward-dialog .reward-seal::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  box-shadow: 8px 0 0 var(--accent-line), 16px 0 0 var(--accent-line);
+}
+.reward-dialog .reward-seal::before { left: calc(50% - 84px); }
+.reward-dialog .reward-seal::after { left: calc(50% + 64px); }
+
+@keyframes reward-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes reward-dialog-in {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 18px)) scale(.975); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes reward-seal-in {
+  from { opacity: 0; transform: translateY(8px) scale(.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes reward-detail-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Body portal, behind the result card but above its backdrop. No hit targets. */
+.pixel-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 62;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  user-select: none;
+}
+.pixel-confetti-piece {
+  position: absolute;
+  top: -16px;
+  left: var(--confetti-left);
+  width: var(--confetti-size);
+  height: var(--confetti-size);
+  background: var(--accent);
+  border-radius: 0;
+  opacity: 0;
+  pointer-events: none;
+  animation: pixel-confetti-fall var(--confetti-duration) var(--confetti-delay) cubic-bezier(.24,.12,.65,1) both;
+}
+.pixel-confetti-tone-1 { background: var(--good); }
+.pixel-confetti-tone-2 { background: var(--info); }
+.pixel-confetti-piece:nth-child(4n) { height: calc(var(--confetti-size) * 2); }
+@keyframes pixel-confetti-fall {
+  0% { transform: translate3d(0, -12px, 0); opacity: 0; }
+  8% { opacity: .72; }
+  75% { opacity: .6; }
+  100% { transform: translate3d(var(--confetti-drift), calc(100dvh + 36px), 0); opacity: 0; }
+}
+@media (max-width: 600px) {
+  .pixel-confetti-piece:nth-child(n + 15) { display: none; }
+}
+
+/* Both the saved app preference and a live OS preference apply to body portals. */
+.reduce-motion .reward-dialog,
+.reduce-motion .reward-dialog *,
+.reduce-motion .reward-overlay {
+  animation: none !important;
+  transition: none !important;
+}
+.reduce-motion .pixel-confetti { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reward-dialog, .reward-dialog *, .reward-overlay {
+    animation: none !important;
+    transition: none !important;
+  }
+  .pixel-confetti { display: none; }
+}
