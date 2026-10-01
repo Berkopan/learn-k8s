@@ -94,3 +94,26 @@ test('small phones have reachable themes and no document overflow',async({page})
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
  await page.getByRole('link',{name:'Terminale geç',exact:true}).click();await expect(page.locator('#terminal-input')).toBeFocused();
 });
+
+
+test('retro navbar uses pixel chrome without sacrificing theme controls',async({page},info)=>{
+ await freeLab(page);await page.getByRole('button',{name:'Karanlık tema',exact:true}).click();
+ await expect(page.locator('.theme-switch>button')).toHaveCount(3);
+ const chrome=await page.evaluate(()=>{
+  const nav=document.querySelector('.global-nav button');
+  const theme=document.querySelector('.theme-switch');
+  const tool=document.querySelector('.masthead-tools .icon-button');
+  const mast=document.querySelector('.masthead');
+  return {
+   navRadius:getComputedStyle(nav).borderRadius,
+   navFont:getComputedStyle(nav).fontFamily,
+   themeRadius:getComputedStyle(theme).borderRadius,
+   themeShadow:getComputedStyle(theme).boxShadow,
+   toolRadius:getComputedStyle(tool).borderRadius,
+   stripe:getComputedStyle(mast,'::after').backgroundImage,
+  };
+ });
+ expect(chrome.navRadius).toBe('0px');expect(chrome.themeRadius).toBe('0px');expect(chrome.toolRadius).toBe('0px');
+ expect(chrome.navFont.toLowerCase()).toContain('mono');expect(chrome.themeShadow).not.toBe('none');expect(chrome.stripe).toContain('repeating-linear-gradient');
+ if(info.project.name==='desktop')await page.screenshot({path:'test-results/desktop-06-retro-navbar.png',fullPage:false});
+});
