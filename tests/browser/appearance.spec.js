@@ -42,6 +42,7 @@ for(const [theme,label] of [['dark','Karanlık tema'],['light','Aydınlık tema'
   await info.click();await expect(info).toHaveAttribute('aria-expanded','true');
   await expect(page.locator('#real-cluster-note')).toBeVisible();
   await expect(page.locator('#real-cluster-note')).toContainText(/Gerçek kümede/);
+  if(info.project.name==='desktop')await page.locator('.workspace').screenshot({path:`test-results/${theme}-real-cluster-info.png`});
   await page.keyboard.press('Escape');await expect(page.locator('#real-cluster-note')).toHaveCount(0);
   const zones=await page.evaluate(()=>{const left=document.querySelector('.lesson-pane'),right=document.querySelector('.workspace');return {left:getComputedStyle(left).backgroundColor,right:getComputedStyle(right).backgroundColor,leftTop:left.getBoundingClientRect().top,rightTop:right.getBoundingClientRect().top};});
   expect(zones.left).not.toBe(zones.right);
