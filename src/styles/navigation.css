@@ -17,3 +17,6 @@
 .theme-switch button:hover { color:var(--ink); }
 .theme-switch button[aria-pressed='true'] { background:var(--accent-soft); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent-line); }
 .main { min-height:calc(100vh - 155px); }
+
+/* Desktop density for the lab shell. */
+@media(min-width:981px){.masthead-inner{min-height:64px}.theme-switch button{height:28px;width:28px}}
