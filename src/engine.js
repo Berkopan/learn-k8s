@@ -1,10 +1,12 @@
+import {helpText,helpTopic,validateDockerInvocation,dockerSuggestions} from './command-help.js';
 import {copy, object, pod, deployment, service, job, cron, meta, isCluster, subset, merge, yaml, refKey, pathGet} from './model.js';
-import { kindOf, tokenize, parse, objects, find, quantity, matches, createLab, aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, traffic, help } from './simulator-core.js';
+import { kindOf, tokenize, parse, objects, find, quantity, matches, createLab, aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, traffic } from './simulator-core.js';
 export { kindOf, tokenize, parse, objects, find, quantity, matches, createLab };
 function execute(s,input){
   const q=parse(input),{binary,args:a,flags:f,tail}=q;const ns=String(f.n||f.namespace||s.namespace);let event={action:binary,namespace:ns},out='';
   if(!binary)return {out:'',event:null};
-  if(binary==='help'||f.help)return {out:help,event:{action:'help'}};
+  const topic=helpTopic(q);
+  if(topic!==null)return {out:helpText(topic),event:{action:'help',topic}};
   if(binary==='clear'||binary==='history')return {out:'',event:{action:binary}};
   if(binary==='ls')return {out:Object.keys(s.files).join('\n')||'(bu laboratuvarda dosya yok)',event:{action:'ls'}};
   if(binary==='cat'){if(!s.files[a[0]])throw new Error(`Dosya bulunamadı: ${a[0]}`);return {out:typeof s.files[a[0]]==='string'?s.files[a[0]]:s.files[a[0]].map(y=>yaml(y)).join('\n---\n'),event:{action:'cat',file:a[0]}};}
@@ -21,11 +23,12 @@ function execute(s,input){
     }else throw new Error('LAB komutu bulunamadı. help kullan.');reconcile(s);return {out,event};
   }
   if(binary==='docker'){
+    validateDockerInvocation(a,f,tail);
     event={action:`docker ${a[0]}`,name:a[1]};const image=a[1];
     if(a[0]==='pull'){if(!image)throw new Error('Image gerekli.');if(!s.docker.images.includes(image))s.docker.images.push(image);pushTrace(s,'Registry',`${image}: katmanlar yerel image deposuna alındı.`);out=`Pull complete (simulated)\nStatus: Downloaded ${image}`;}
     else if(a[0]==='images')out='REPOSITORY:TAG\n'+s.docker.images.join('\n');
     else if(a[0]==='run'){const name=f.name||`container-${++s.serial}`;if(!image)throw new Error('Image gerekli.');if(s.docker.containers.some(c=>c.name===name))throw new Error('Container adı zaten kullanılıyor.');if(!s.docker.images.includes(image))s.docker.images.push(image);s.docker.containers.push({name,image,status:'Running'});event.name=name;out=`${name} started (simulated)`;pushTrace(s,'Runtime',`${name}: image → çalışan container`);}
-    else if(a[0]==='ps')out=s.docker.containers.filter(c=>f.all||c.status==='Running').map(c=>`${c.name}\t${c.image}\t${c.status}`).join('\n')||'No containers.';
+    else if(a[0]==='ps')out=s.docker.containers.filter(c=>f.all||f.a||c.status==='Running').map(c=>`${c.name}\t${c.image}\t${c.status}`).join('\n')||'No containers.';
     else if(a[0]==='tag'){if(!s.docker.images.includes(image))throw new Error('Kaynak image yok.');if(!a[2])throw new Error('Yeni tag gerekli.');if(!s.docker.images.includes(a[2]))s.docker.images.push(a[2]);out=`Tagged ${a[2]} (aynı image için yeni etiket)`;}
     else {const c=s.docker.containers.find(c=>c.name===image);if(!c)throw new Error(`Container bulunamadı: ${image}`);if(a[0]==='stop'){c.status='Exited';out=image;}else if(a[0]==='rm'){if(c.status==='Running')throw new Error('Çalışan container önce durdurulmalı.');s.docker.containers=s.docker.containers.filter(x=>x!==c);out=image;}else if(a[0]==='logs')out='Server listening on port 80\nGET / 200';else if(a[0]==='inspect')out=JSON.stringify(c,null,2);else throw new Error('Desteklenmeyen docker komutu. help kullan.');}return {out,event};
   }
@@ -49,7 +52,6 @@ function execute(s,input){
     const permission=verb==='get'?(name?'get':'list'):verb==='describe'?'get':'delete';
     if(f.A||f['all-namespaces']||isCluster(kind)||!apiCan(s,permission,resource,f.as,ns))throw new Error(`Forbidden: ${f.as} cannot ${permission} ${resource||kind} in namespace ${ns}.`);
   }
-
   if(verb==='version')return {out:'Client: learn-k8s simulated kubectl\nServer: no real Kubernetes server\nStable API concepts; not a full version emulator.',event};
   if(verb==='cluster-info')return {out:'Kubernetes control plane (simulated): https://api.learning.local\nCoreDNS (simulated): kube-system\nRuntime: containerd (conceptual; no daemon is running)',event};
   if(verb==='api-resources')return {out:[...new Set(Object.values(aliases))].join('\n'),event};
@@ -160,4 +162,4 @@ export function goalMet(s,g){
   if(g.type==='all')return g.goals.every(x=>goalMet(s,x));
   return false;
 }
-export const suggestionWords=['kubectl get pods','kubectl get nodes','kubectl get deployments','kubectl get services','kubectl get events','kubectl get pods -o wide','kubectl describe pod','kubectl apply -f','kubectl scale deployment/web --replicas=3','kubectl rollout status deployment/web','kubectl logs','docker images','docker ps','lab tick','lab load 90','help','ls','cat','clear','history'];
+export const suggestionWords=[...dockerSuggestions,'kubectl get pods','kubectl get nodes','kubectl get deployments','kubectl get services','kubectl get events','kubectl get pods -o wide','kubectl describe pod','kubectl apply -f','kubectl scale deployment/web --replicas=3','kubectl rollout status deployment/web','kubectl logs','lab tick','lab load 90','help','ls','cat','clear','history'];
