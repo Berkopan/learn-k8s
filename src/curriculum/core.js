@@ -76,7 +76,7 @@ export const commandClue=command=>{
   if(/^kubectl apply\b/.test(c))return 'Hazır manifestte istenen durum tarif edilmiş; dosyayı deklaratif olarak kümeye uygula.';
   if(/^kubectl diff\b/.test(c))return 'Değişikliği yazmadan önce manifest ile canlı durum arasındaki farkı önizle.';
   if(/^kubectl scale\b/.test(c))return 'Pod’ları tek tek yaratıp silme; controller’ın desired replica sayısını değiştir.';
-  if(/^kubectl set image\b/.test(c))return 'Deployment’ı silmeden Pod template’indeki ilgili container image referansansını güncelle.'.replace('referansansını','referansını');
+  if(/^kubectl set image\b/.test(c))return 'Deployment’ı silmeden Pod template’indeki ilgili container image referansını güncelle.';
   if(/^kubectl set env\b/.test(c))return 'Image’ı değiştirmeden controller’ın Pod template’ine ortam değişkeni veya referansı ekle.';
   if(/^kubectl set resources\b/.test(c))return 'Gerçek kullanım ölçümü değil, scheduler’ın yerleşimde kullandığı request/limit sözleşmesini değiştir.';
   if(/^kubectl rollout status\b/.test(c))return 'Yazma komutundan sonra controller’ın yeni revision’a gerçekten yakınsadığını ayrıca doğrula.';
