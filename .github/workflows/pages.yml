@@ -19,7 +19,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify dependency manifests were not modified
+        run: git diff --exit-code -- package.json package-lock.json
       - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
