@@ -11,11 +11,14 @@ test('first lesson, errors, reward, persistence and no duplicate XP',async({page
  await command(page,'docker images');await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta strong')).toHaveText('+40 XP');
  await page.getByRole('button',{name:'Burada denemeye devam et'}).click();await page.reload();await expect(page.locator('.completed-label')).toBeVisible();
  await command(page,'docker pull nginx:1.27');await command(page,'docker images');
+ await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta strong')).toHaveText('Tekrar tamamlandı');
  const value=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v1')));expect(Object.keys(value.completed)).toHaveLength(1);
  await page.screenshot({path:`test-results/${info.project.name}-02-reward.png`,fullPage:true});
 });
 test('all 128 guided lessons can be completed through the real UI',async({page},info)=>{
  test.skip(info.project.name!=='desktop','Engine suite covers all labs on every run; full UI progression runs once.');test.setTimeout(360000);
+ // Real-motion timing, focus and confetti have dedicated coverage in reward.spec.js.
+ await page.emulateMedia({reducedMotion:'reduce'});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.getByRole('button',{name:'Sefere başla',exact:true}).click();
  for(const level of levels){await expect(page.locator('.lesson-title-row h1')).toHaveText(level.title);for(const step of level.steps)await command(page,step.command);await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta>span')).toContainText(String(level.id).padStart(3,'0'));if(level.id<128)await page.getByRole('button',{name:'Sonraki laboratuvara geç'}).click();}
  const data=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v1')));expect(Object.keys(data.completed)).toHaveLength(128);expect(errors).toEqual([]);
