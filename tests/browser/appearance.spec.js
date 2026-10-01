@@ -33,13 +33,13 @@ for(const [theme,label] of [['dark','Karanlık tema'],['light','Aydınlık tema'
   await expect(page.locator('.zone-marker-briefing')).toContainText('01 · BRIEFING');
   await expect(page.locator('.zone-marker-workbench')).toContainText('02 · WORKBENCH');
   await expect(page.locator('.caution-note')).toHaveCount(0);
-  const info=page.getByRole('button',{name:'Gerçek kümede aklında tut'});
-  await expect(info).toBeVisible();
-  const triggerStyle=await info.evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,border:s.borderTopWidth,width:el.getBoundingClientRect().width};});
+  const infoButton=page.getByRole('button',{name:'Gerçek kümede aklında tut'});
+  await expect(infoButton).toBeVisible();
+  const triggerStyle=await infoButton.evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,border:s.borderTopWidth,width:el.getBoundingClientRect().width};});
   expect(triggerStyle.background).toBe('rgba(0, 0, 0, 0)');
   expect(triggerStyle.border).toBe('0px');
   expect(triggerStyle.width).toBeLessThanOrEqual(24);
-  await info.click();await expect(info).toHaveAttribute('aria-expanded','true');
+  await infoButton.click();await expect(infoButton).toHaveAttribute('aria-expanded','true');
   await expect(page.locator('#real-cluster-note')).toBeVisible();
   await expect(page.locator('#real-cluster-note')).toContainText(/Gerçek kümede/);
   if(info.project.name==='desktop')await page.locator('.workspace').screenshot({path:`test-results/${theme}-real-cluster-info.png`});
