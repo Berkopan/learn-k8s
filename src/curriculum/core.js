@@ -38,12 +38,12 @@ const goalClue=goal=>{
   if(goal.type==='state')return ' Laboratuvarın simüle durumundaki değişikliği sonraki gözlem adımında doğrula.';
   return '';
 };
-const commandClue=command=>{
+export const commandClue=command=>{
   const c=(command||'').trim();
   if(/^docker pull\b/.test(c))return 'Container başlatma; image referansını registry’den yerel image deposuna getiren işlemi düşün.';
   if(/^docker images\b/.test(c))return 'Çalışan süreçleri değil, yerelde bilinen image referanslarını listeleyen envantere bak.';
   if(/^docker run\b/.test(c))return 'Yeni bir container örneği oluşturuyorsun; örnek adı ile image referansını birbirinden ayır.';
-  if(/^docker ps\b/.test(c))return c.includes('--all')?'Yalnız çalışanları değil durmuş kayıtları da kapsayan container listesini iste.':'Image listesini değil çalışan container örneklerini sorgula.';
+  if(/^docker ps\b/.test(c))return /(?:^|\s)(?:--all|-a)(?:\s|$)/.test(c)?'Yalnız çalışanları değil durmuş kayıtları da kapsayan container listesini iste.':'Image listesini değil çalışan container örneklerini sorgula.';
   if(/^docker inspect\b/.test(c))return 'Liste özeti yetmez; tek container’ın ayrıntılı metadata ve image bilgisini aç.';
   if(/^docker logs\b/.test(c))return 'Container durumunu değiştirme; uygulamanın stdout/stderr akışını gözlemle.';
   if(/^docker tag\b/.test(c))return 'Yeni süreç başlatmadan mevcut image içeriğine ikinci bir okunabilir referans ekle.';
@@ -112,13 +112,13 @@ const commandClue=command=>{
   return 'Görevin fiiline karar ver: önce gözlem mi, sonra küçük bir değişiklik mi, yoksa sonucu doğrulama mı gerektiğini ayır.';
 };
 const contextualHint=(title,step,index)=>`${title} · ${index+1}. adım: ${commandClue(step.command)}${goalClue(step.goal)}`;
-const syntaxClue=command=>{
+export const syntaxClue=command=>{
   const c=(command||'').trim();
   if(/^docker pull\b/.test(c))return 'docker pull REPOSITORY:TAG';
   if(/^docker images\b/.test(c))return 'docker images';
-  if(/^docker run\b/.test(c))return 'docker run [OPTIONS] IMAGE';
-  if(/^docker ps\b/.test(c))return 'docker ps [--all]';
-  if(/^docker (inspect|logs|stop|rm)\b/.test(c))return `docker ${c.split(/\\s+/)[1]} CONTAINER`;
+  if(/^docker run\b/.test(c))return 'docker run [-d] [--name NAME] IMAGE';
+  if(/^docker ps\b/.test(c))return 'docker ps [-a | --all]';
+  if(/^docker (inspect|logs|stop|rm)\b/.test(c))return `docker ${c.split(/\s+/)[1]} CONTAINER`;
   if(/^docker tag\b/.test(c))return 'docker tag SOURCE_IMAGE TARGET_IMAGE';
   if(/^kubectl get\b/.test(c))return 'kubectl get TYPE [NAME] [-n NAMESPACE] [-l SELECTOR] [-o FORMAT]';
   if(/^kubectl describe\b/.test(c))return 'kubectl describe TYPE NAME [-n NAMESPACE]';
@@ -138,7 +138,7 @@ const syntaxClue=command=>{
   if(/^kubectl set image\b/.test(c))return 'kubectl set image TYPE/NAME CONTAINER=IMAGE';
   if(/^kubectl set env\b/.test(c))return 'kubectl set env TYPE/NAME KEY=VALUE | --from=configmap/NAME';
   if(/^kubectl set resources\b/.test(c))return 'kubectl set resources TYPE/NAME --requests=cpu=CPU,memory=MEMORY [--limits=…]';
-  if(/^kubectl rollout (status|history|undo|restart)\b/.test(c))return `kubectl rollout ${c.split(/\\s+/)[2]} TYPE/NAME`;
+  if(/^kubectl rollout (status|history|undo|restart)\b/.test(c))return `kubectl rollout ${c.split(/\s+/)[2]} TYPE/NAME`;
   if(/^kubectl expose\b/.test(c))return 'kubectl expose TYPE NAME --port=PORT [--target-port=PORT] [--type=TYPE]';
   if(/^kubectl port-forward\b/.test(c))return 'kubectl port-forward TYPE/NAME LOCAL_PORT:REMOTE_PORT';
   if(/^kubectl label\b/.test(c))return 'kubectl label TYPE NAME KEY=VALUE [--overwrite]';
@@ -154,7 +154,7 @@ const syntaxClue=command=>{
   if(/^kubectl delete\b/.test(c))return 'kubectl delete TYPE NAME | kubectl delete TYPE --all';
   if(/^kubectl autoscale\b/.test(c))return 'kubectl autoscale TYPE NAME --min=N --max=N --cpu-percent=PERCENT';
   if(/^kubectl config\b/.test(c))return 'kubectl config SUBCOMMAND [ARGS]';
-  if(/^kubectl (cluster-info|version|api-resources|explain)\b/.test(c))return `kubectl ${c.split(/\\s+/).slice(1,2).join(' ')} [ARGS]`;
+  if(/^kubectl (cluster-info|version|api-resources|explain)\b/.test(c))return `kubectl ${c.split(/\s+/).slice(1,2).join(' ')} [ARGS]`;
   if(/^helm install\b/.test(c))return 'helm install RELEASE CHART [-f VALUES | --set KEY=VALUE]';
   if(/^helm upgrade\b/.test(c))return 'helm upgrade RELEASE CHART [--set KEY=VALUE]';
   if(/^helm history\b/.test(c))return 'helm history RELEASE';
