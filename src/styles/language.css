@@ -25,6 +25,7 @@
 }
 .language-switch option { background: var(--surface); color: var(--ink); }
 .terminal .terminal-docker-help { margin-top: 6px; }
+html[lang='en'] .terminal-error pre::before { content: '[ERROR] '; }
 html[lang='en'] .lesson-tab-list > button { min-width: 0; }
 html[lang='en'] .lesson-tab-list > button > span:not(.lesson-tab-count) { white-space: normal; }
 html[lang='en'] .resume-topline .overline { line-height: 1.6; }
