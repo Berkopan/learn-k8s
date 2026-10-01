@@ -29,7 +29,13 @@ for(const [theme,label] of [['dark','Karanlık tema'],['light','Aydınlık tema'
  });
  test(`${theme}: populated laboratory, editor and inspector`,async({page},info)=>{
   await freeLab(page);await page.getByRole('button',{name:label,exact:true}).click();
-  await expect(page.locator('.pod-card')).toHaveCount(2);await audit(page,`${theme}-lab-axe`);
+  await expect(page.locator('.pod-card')).toHaveCount(2);
+  await expect(page.locator('.zone-marker-briefing')).toContainText('01 · BRIEFING');
+  await expect(page.locator('.zone-marker-workbench')).toContainText('02 · WORKBENCH');
+  const zones=await page.evaluate(()=>{const left=document.querySelector('.lesson-pane'),right=document.querySelector('.workspace');return {left:getComputedStyle(left).backgroundColor,right:getComputedStyle(right).backgroundColor,leftTop:left.getBoundingClientRect().top,rightTop:right.getBoundingClientRect().top};});
+  expect(zones.left).not.toBe(zones.right);
+  if(info.project.name==='desktop')expect(Math.abs(zones.leftTop-zones.rightTop)).toBeLessThan(3);
+  await audit(page,`${theme}-lab-axe`);
   await page.screenshot({path:`test-results/${info.project.name}-${theme}-laboratory.png`,fullPage:true});
   await page.locator('.pod-card').first().click();await audit(page,`${theme}-inspector-axe`);
   await page.getByRole('button',{name:'Kapat',exact:true}).click();
