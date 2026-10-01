@@ -21,6 +21,16 @@ test('all 128 guided lessons can be completed through the real UI',async({page},
  const data=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v1')));expect(Object.keys(data.completed)).toHaveLength(128);expect(errors).toEqual([]);
  await page.screenshot({path:'test-results/desktop-03-final.png',fullPage:true});
 });
+
+test('level header can collapse to reclaim vertical workspace',async({page},info)=>{
+ await freeExplore(page,78);const heading=page.locator('.lesson-heading');const details=page.locator('#lesson-header-details');const toggle=page.getByRole('button',{name:'Üst bölümü daralt',exact:true});
+ const before=await page.locator('.workbench').evaluate(el=>el.getBoundingClientRect().top);
+ await toggle.click();await expect(heading).toHaveClass(/is-collapsed/);await expect(details).toBeHidden();await expect(page.locator('.lesson-title-row h1')).toHaveText(levels[77].title);
+ const expand=page.getByRole('button',{name:'Üst bölümü genişlet',exact:true});await expect(expand).toHaveAttribute('aria-expanded','false');
+ const after=await page.locator('.workbench').evaluate(el=>el.getBoundingClientRect().top);expect(before-after).toBeGreaterThan(45);
+ if(info.project.name==='desktop')await page.screenshot({path:'test-results/desktop-05-collapsed-header.png',fullPage:false});
+ await expand.click();await expect(heading).not.toHaveClass(/is-collapsed/);await expect(details).toBeVisible();
+});
 test('populated topology, inspector, valid/invalid YAML and mobile layout',async({page},info)=>{
  await freeExplore(page,42);await expect(page.locator('.pod-card')).toHaveCount(2);await expect(page.locator('.service-card')).toHaveCount(1);
  await page.screenshot({path:`test-results/${info.project.name}-04-cluster.png`,fullPage:true});
