@@ -2,7 +2,8 @@
 .reward-overlay[data-state='open'] {
   animation: reward-overlay-in 400ms ease-out both;
 }
-.reward-dialog {
+/* Outrank the shared .dialog rule even when its stylesheet loads later. */
+.dialog.reward-dialog {
   z-index: 63;
   border-color: var(--accent-line);
   box-shadow: var(--shadow), inset 0 3px 0 var(--accent-line);
