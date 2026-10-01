@@ -3,6 +3,8 @@ import AxeBuilder from '@axe-core/playwright';
 import {levels} from '../../src/curriculum.js';
 import {quizzes} from '../../src/reference.js';
 
+// Video changes worker configuration, so Playwright requires file-level scope.
+test.use({video: 'on'});
 const progressKey = 'learn-k8s:progress:v1';
 async function openLab(page, {id = 1, reduced = false, systemReduced = false, theme = 'dark', clock = false} = {}) {
   await page.emulateMedia({reducedMotion: systemReduced ? 'reduce' : 'no-preference'});
@@ -47,6 +49,8 @@ test('completion is saved immediately; the reward waits 900ms without auto-advan
   await expect(page.locator('.pixel-confetti-piece')).toHaveCount(22);
   await expect(page.locator('.pixel-confetti')).toHaveAttribute('aria-hidden', 'true');
   await expect(page.locator('.pixel-confetti')).toHaveCSS('pointer-events', 'none');
+  await expect(dialog).toHaveCSS('z-index', '63');
+  await expect(page.locator('.pixel-confetti')).toHaveCSS('z-index', '62');
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#level=1$/);
   await expect(dialog).toBeVisible();
@@ -173,7 +177,6 @@ test('320px final reward keeps the optional quiz and the journey action reachabl
 });
 
 test.describe('celebration visual evidence', () => {
-  test.use({video: 'on'});
   for (const theme of ['dark', 'light']) {
     test(`${theme}: finite top-down shower, accessible card and working next action`, async ({page}, info) => {
       await openLab(page, {theme});
