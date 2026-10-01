@@ -32,6 +32,15 @@ for(const [theme,label] of [['dark','Karanlık tema'],['light','Aydınlık tema'
   await expect(page.locator('.pod-card')).toHaveCount(2);
   await expect(page.locator('.zone-marker-briefing')).toContainText('01 · BRIEFING');
   await expect(page.locator('.zone-marker-workbench')).toContainText('02 · WORKBENCH');
+  const caution=page.locator('.caution-note');
+  await expect(caution).not.toHaveAttribute('open','');
+  const compact=await caution.evaluate(el=>({width:el.getBoundingClientRect().width,parent:el.parentElement.getBoundingClientRect().width}));
+  expect(compact.width).toBeLessThan(compact.parent*.72);
+  await caution.locator('summary').click();await expect(caution).toHaveAttribute('open','');
+  const expanded=await caution.evaluate(el=>{const parent=el.parentElement,style=getComputedStyle(parent);const contentWidth=parent.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);return {width:el.getBoundingClientRect().width,contentWidth};});
+  expect(expanded.width).toBeGreaterThan(expanded.contentWidth*.95);
+  await expect(caution.locator('p')).toContainText(/./);
+  await caution.locator('summary').click();
   const zones=await page.evaluate(()=>{const left=document.querySelector('.lesson-pane'),right=document.querySelector('.workspace');return {left:getComputedStyle(left).backgroundColor,right:getComputedStyle(right).backgroundColor,leftTop:left.getBoundingClientRect().top,rightTop:right.getBoundingClientRect().top};});
   expect(zones.left).not.toBe(zones.right);
   if(info.project.name==='desktop')expect(Math.abs(zones.leftTop-zones.rightTop)).toBeLessThan(3);
