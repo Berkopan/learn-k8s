@@ -32,3 +32,17 @@
 .task-list li{padding:10px 0}
 .task-help{padding-top:9px;margin-top:3px}
 }
+
+/* Collapsible lab overview: reclaim vertical space on dense levels. */
+.collapsed-lesson-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.collapsed-lesson-bar>div{display:flex;align-items:baseline;gap:10px;min-width:0}
+.collapsed-lesson-bar span{font:10px var(--mono);letter-spacing:1px;color:var(--accent);white-space:nowrap}
+.collapsed-lesson-bar strong{font:400 18px var(--serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lesson-collapse-toggle{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:5px 8px;border:1px solid var(--line);border-radius:3px;color:var(--muted);font-size:11px;white-space:nowrap;background:var(--recess)}
+.lesson-collapse-toggle:hover{color:var(--ink);border-color:var(--line-strong)}
+.lesson-collapse-toggle svg{transition:transform .18s ease}
+.lesson-actions .lesson-collapse-toggle svg{transform:rotate(-90deg)}
+.collapsed-lesson-bar .lesson-collapse-toggle svg{transform:rotate(90deg)}
+.header-collapsed .lab-breadcrumb,.header-collapsed .lesson-heading{display:none}
+.header-collapsed .workbench{margin-top:10px}
+@media(max-width:640px){.collapsed-lesson-bar{padding:9px 0 10px}.collapsed-lesson-bar strong{font-size:16px}.lesson-collapse-toggle{font-size:10px;padding-inline:7px}.lesson-actions .lesson-collapse-toggle{font-size:0;width:30px;padding:5px;justify-content:center}}
