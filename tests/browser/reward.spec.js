@@ -5,6 +5,7 @@ import {quizzes} from '../../src/reference.js';
 
 // Video changes worker configuration, so Playwright requires file-level scope.
 test.use({video: 'on'});
+test.setTimeout(25000);
 const progressKey = 'learn-k8s:progress:v1';
 async function openLab(page, {id = 1, reduced = false, systemReduced = false, theme = 'dark', clock = false} = {}) {
   await page.emulateMedia({reducedMotion: systemReduced ? 'reduce' : 'no-preference'});
@@ -59,6 +60,8 @@ test('completion is saved immediately; the reward waits 900ms without auto-advan
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+  // Radix intentionally restores focus on the next timer turn after unmount.
+  await page.clock.runFor(1);
   await expect(page.locator('#terminal-input')).toBeFocused();
   await command(page, 'docker images');
   await page.clock.runFor(5000);
@@ -130,6 +133,8 @@ for (const preference of ['app', 'system']) {
     await expect(page.locator('.reward-overlay')).toHaveCSS('animation-name', 'none');
     await expect(page.locator('.pixel-confetti-piece')).toHaveCount(0);
     await page.getByRole('button', {name: 'Burada denemeye devam et'}).click();
+    await expect(page.locator('.reward-dialog')).toHaveCount(0);
+    await page.clock.runFor(1);
     await expect(page.locator('#terminal-input')).toBeFocused();
   });
 }
