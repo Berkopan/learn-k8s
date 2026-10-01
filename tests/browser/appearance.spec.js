@@ -37,8 +37,8 @@ for(const [theme,label] of [['dark','Karanlık tema'],['light','Aydınlık tema'
   const compact=await caution.evaluate(el=>({width:el.getBoundingClientRect().width,parent:el.parentElement.getBoundingClientRect().width}));
   expect(compact.width).toBeLessThan(compact.parent*.72);
   await caution.locator('summary').click();await expect(caution).toHaveAttribute('open','');
-  const expanded=await caution.evaluate(el=>({width:el.getBoundingClientRect().width,parent:el.parentElement.getBoundingClientRect().width}));
-  expect(expanded.width).toBeGreaterThan(expanded.parent*.9);
+  const expanded=await caution.evaluate(el=>{const parent=el.parentElement,style=getComputedStyle(parent);const contentWidth=parent.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);return {width:el.getBoundingClientRect().width,contentWidth};});
+  expect(expanded.width).toBeGreaterThan(expanded.contentWidth*.95);
   await expect(caution.locator('p')).toContainText(/./);
   await caution.locator('summary').click();
   const zones=await page.evaluate(()=>{const left=document.querySelector('.lesson-pane'),right=document.querySelector('.workspace');return {left:getComputedStyle(left).backgroundColor,right:getComputedStyle(right).backgroundColor,leftTop:left.getBoundingClientRect().top,rightTop:right.getBoundingClientRect().top};});
