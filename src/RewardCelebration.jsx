@@ -7,6 +7,8 @@ export const REWARD_REVEAL_DELAY = 900;
 export const CONFETTI_LIFETIME = 4200;
 const motionQuery = '(prefers-reduced-motion: reduce)';
 const prefersReducedMotion = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.(motionQuery).matches);
+// Workspace inspectors own local state, unlike App's course/settings dialogs.
+const anotherDialogOpen = () => Boolean(document.querySelector('[role="dialog"][data-state="open"]:not(.reward-dialog)'));
 
 function useReducedMotion(preference) {
   const [systemReduced, setSystemReduced] = useState(prefersReducedMotion);
@@ -30,6 +32,9 @@ export function useCompletionReward({levelId, visible, blocked, reduced}) {
     timer.current = null;
     setOpen(false);
   }, []);
+  const reveal = useCallback(() => {
+    if (!anotherDialogOpen()) setOpen(true);
+  }, []);
 
   // A queued result must never follow the learner into another screen or dialog.
   useEffect(() => {
@@ -41,22 +46,22 @@ export function useCompletionReward({levelId, visible, blocked, reduced}) {
     if (reducedMotion && timer.current !== null && visible && !blocked) {
       clearTimeout(timer.current);
       timer.current = null;
-      setOpen(true);
+      reveal();
     }
-  }, [reducedMotion, visible, blocked]);
+  }, [reducedMotion, visible, blocked, reveal]);
 
   const queue = useCallback(() => {
     dismiss();
     if (!visible || blocked) return;
     if (reducedMotion || prefersReducedMotion()) {
-      setOpen(true);
+      reveal();
       return;
     }
     timer.current = setTimeout(() => {
       timer.current = null;
-      setOpen(true);
+      reveal();
     }, REWARD_REVEAL_DELAY);
-  }, [dismiss, visible, blocked, reducedMotion]);
+  }, [dismiss, visible, blocked, reducedMotion, reveal]);
 
   return {open: open && visible && !blocked, queue, dismiss, reducedMotion};
 }
