@@ -100,18 +100,25 @@ test('switching languages preserves drafts, unsaved YAML, notes, help visibility
  await expect(page.locator('#terminal-input')).toHaveValue('kubectl get po');
 });
 
-test('invalid saved language falls back to the browser and denied storage does not break switching',async({page})=>{
+test('invalid saved language falls back to the supported browser language',async({page})=>{
  await page.addInitScript(key=>localStorage.setItem(key,'unsupported-language'),languageKey);
  await page.goto('/');
  await expect(page.locator('html')).toHaveAttribute('lang','en');
- // A separate navigation uses a browser where storage access is denied entirely.
+ await expect(picker(page)).toHaveValue('en');
+});
+
+test('denied storage from startup does not break language switching',async({page})=>{
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ // Use a fresh document: changing only its hash would not rerun initialization scripts.
  await page.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Denied','SecurityError');},configurable:true}));
  await page.goto('/#level=1');
  await expect(page.locator('.storage-warning')).toBeVisible();
+ await expect(page.locator('html')).toHaveAttribute('lang','en');
  await picker(page).selectOption('tr');
  await expect(page.locator('.lesson-title-row h1')).toHaveText(levels[0].title);
  await picker(page).selectOption('en');
  await expect(page.locator('.lesson-title-row h1')).toHaveText(english.levels[0].title);
+ expect(errors).toEqual([]);
 });
 
 test('all 128 English labs show their own guide and complete with the original commands',async({page},info)=>{
