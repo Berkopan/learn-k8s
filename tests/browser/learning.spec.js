@@ -188,6 +188,8 @@ test('final six-step lesson remains reachable on a 320px phone', async ({page}, 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   await readTab(page).click();
   await expect(page.locator('.guide-panel')).toBeVisible();
+  // The terminal shortcut belongs to the collapsible context, so reopen it first.
+  await page.getByRole('button', {name: 'Üst bölümü genişlet', exact: true}).click();
   await page.getByRole('link', {name: 'Terminale geç', exact: true}).click();
   await expect(page.locator('#terminal-input')).toBeFocused();
   await command(page, levels[127].steps[0].command);
