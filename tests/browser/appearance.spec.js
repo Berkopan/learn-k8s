@@ -54,16 +54,18 @@ for(const [theme,label] of [['dark','Karanlık tema'],['light','Aydınlık tema'
   await page.getByRole('tab',{name:/Dosyalar/}).click();await audit(page,`${theme}-editor-axe`);
  });
 }
-test('saved preference survives reload; system reacts to OS changes',async({page})=>{
+test('initial theme follows the OS until the user makes an explicit choice',async({page})=>{
  await page.emulateMedia({colorScheme:'light'});await page.goto('/');
- await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ await expect(page.getByRole('button',{name:'Aydınlık tema',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('button',{name:'Sistem teması',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(k=>localStorage.getItem(k),key)).toBeNull();
+ await page.emulateMedia({colorScheme:'dark'});await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  await page.getByRole('button',{name:'Aydınlık tema',exact:true}).click();await page.reload();
  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
  await expect(page.getByRole('button',{name:'Aydınlık tema',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.emulateMedia({colorScheme:'dark'});await expect(page.locator('html')).toHaveAttribute('data-theme','light');
- await page.getByRole('button',{name:'Sistem teması',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
- await page.emulateMedia({colorScheme:'light'});await expect(page.locator('html')).toHaveAttribute('data-theme','light');
- expect(await page.evaluate(k=>localStorage.getItem(k),key)).toBe('system');
+ expect(await page.evaluate(k=>localStorage.getItem(k),key)).toBe('light');
 });
 test('theme and atlas navigation preserve lab state, terminal draft and unsaved YAML',async({page})=>{
  await freeLab(page);const input=page.locator('#terminal-input');await input.fill('kubectl get pods');await input.press('Enter');
@@ -98,7 +100,7 @@ test('small phones have reachable themes and no document overflow',async({page})
 
 test('retro navbar uses pixel chrome without sacrificing theme controls',async({page},info)=>{
  await freeLab(page);await page.getByRole('button',{name:'Karanlık tema',exact:true}).click();
- await expect(page.locator('.theme-switch>button')).toHaveCount(3);
+ await expect(page.locator('.theme-switch>button')).toHaveCount(2);
  const chrome=await page.evaluate(()=>{
   const nav=document.querySelector('.global-nav button');
   const theme=document.querySelector('.theme-switch');
