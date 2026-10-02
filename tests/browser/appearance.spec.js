@@ -119,3 +119,16 @@ test('retro navbar uses pixel chrome without sacrificing theme controls',async({
  expect(chrome.navFont.toLowerCase()).toContain('mono');expect(chrome.themeShadow).not.toBe('none');expect(chrome.stripe).toContain('repeating-linear-gradient');
  if(info.project.name==='desktop')await page.screenshot({path:'test-results/desktop-06-retro-navbar.png',fullPage:false});
 });
+
+
+test('browser-only note and GitHub repository link live in the global footer',async({page})=>{
+ await freeLab(page);
+ const workspace=page.locator('.workspace');
+ const footer=page.locator('.site-footer');
+ await expect(workspace).not.toContainText('%100 tarayıcı içinde');
+ await expect(footer).toContainText('%100 tarayıcı içinde');
+ const github=footer.getByRole('link',{name:'GitHub',exact:true});
+ await expect(github).toHaveAttribute('href','https://github.com/Berkopan/learn-k8s');
+ await expect(github).toHaveAttribute('target','_blank');
+ await expect(github).toHaveAttribute('rel',/noopener/);
+});
