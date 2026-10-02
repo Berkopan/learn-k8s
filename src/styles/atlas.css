@@ -81,5 +81,7 @@ kbd { font-size:10px; padding:1px 5px; border:1px solid var(--line); border-radi
 .atlas-footnote p { font-size:12px; max-width:700px; line-height:1.7; }
 .atlas-footnote>button { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; white-space:nowrap; color:var(--accent); }
 .site-footer { max-width:1368px; margin:auto; padding:24px 36px; display:flex; align-items:center; gap:24px; color:var(--muted); font-size:11px; border-top:1px solid var(--line); }
-.site-footer>span { display:flex; align-items:center; gap:10px; }.site-footer i { font-style:normal; color:var(--accent); }.site-footer p { margin-left:auto; }
-.site-footer button { display:flex; align-items:center; gap:8px; }.site-footer button:hover { color:var(--accent); }
+.site-footer>span { display:flex; align-items:center; gap:10px; }.site-footer i { font-style:normal; color:var(--accent); }
+.footer-browser-note { margin-left:auto; white-space:nowrap; }
+.site-footer .footer-link,.site-footer button { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.site-footer .footer-link:hover,.site-footer button:hover { color:var(--accent); }

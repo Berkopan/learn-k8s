@@ -82,7 +82,7 @@ export function ExpeditionShell({view,progress,onMap,onLab,onCourse,onModal,chil
       </div>
     </div></header>
     <main className={`main main-${view}`}>{children}</main>
-    <footer className="site-footer"><span><Helm size={20}/>learn-k8s <i>/</i> {t('Küme seferleri')}</span><p>{t('Gerçek komutlar. Simüle bir dünya.')}</p><button onClick={()=>onModal('about')}>{t('Simülasyonun sınırları')} <Icon name="external" size={13}/></button></footer>
+    <footer className="site-footer"><span><Helm size={20}/>learn-k8s <i>/</i> {t('Küme seferleri')}</span><span className="footer-browser-note"><Icon name="lock" size={12}/>{t('%100 tarayıcı içinde')}</span><a className="footer-link" href="https://github.com/Berkopan/learn-k8s" target="_blank" rel="noopener noreferrer"><Icon name="code" size={13}/>GitHub</a><button onClick={()=>onModal('about')}>{t('Simülasyonun sınırları')} <Icon name="external" size={13}/></button></footer>
   </>;
 }
 function Chart({progress}) {
