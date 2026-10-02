@@ -74,7 +74,7 @@
 .guide-footer .source-link { margin: 0; }
 .guide-footer .button { width: 100%; }
 .lesson-card .mission { min-height: 100%; padding: 18px; border: 0; border-radius: 0; background: var(--surface); }
-.lesson-card .mission .mission-heading { margin-bottom: 14px; }
+.lesson-card .mission-heading { margin-bottom: 14px; }
 .lesson-card .task-list li > div { min-width: 0; overflow-wrap: anywhere; }
 .lesson-card .hint-bubble, .lesson-card .solution-box { background: var(--recess); }
 
