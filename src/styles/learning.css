@@ -74,7 +74,7 @@
 .guide-footer .source-link { margin: 0; }
 .guide-footer .button { width: 100%; }
 .lesson-card .mission { min-height: 100%; padding: 18px; border: 0; border-radius: 0; background: var(--surface); }
-.lesson-card .mission-heading { margin-bottom: 14px; }
+.lesson-card .mission .mission-heading { margin-bottom: 14px; }
 .lesson-card .task-list li > div { min-width: 0; overflow-wrap: anywhere; }
 .lesson-card .hint-bubble, .lesson-card .solution-box { background: var(--recess); }
 
@@ -104,13 +104,12 @@
   letter-spacing: 0;
 }
 .terminal-bar { font: 16px/1.25 var(--mono); }
-.terminal-tag { font-size: 14px; border-radius: 0; letter-spacing: .6px; }
 .terminal-dots i, .terminal-dots i:nth-child(2), .terminal-dots i:nth-child(3) {
   background: var(--terminal-ink);
   transform: none;
 }
 .terminal-dots i:nth-child(2) { background: var(--terminal-muted); }
-.terminal-output { background: #000; }
+.terminal-output { background: #000; padding-inline: 14px; }
 .terminal-welcome { font: 20px/1.3 var(--mono); }
 .terminal-welcome > span { font-size: 18px; letter-spacing: .3px; }
 .terminal-welcome > p { line-height: 1.3; }
@@ -118,15 +117,52 @@
 .terminal-error { border-left: 2px dashed var(--terminal-ink); padding-left: 10px; }
 .terminal-error pre::before { content: '[HATA] '; }
 .terminal-error pre { color: var(--bad); }
-.terminal-input-row .prompt { font-size: 24px; }
-.terminal-input-row input { font: 22px/1.25 var(--mono); caret-color: var(--terminal-ink); }
+
+/* A shell-like input line, not a highlighted form field. Keep the native caret
+   as the input's focus indicator; buttons and output retain their focus rings. */
+.terminal-input-row {
+  gap: 6px;
+  margin: 0;
+  padding: 3px 14px 5px;
+  border-top: 0;
+}
+.terminal .terminal-input-row input,
+.terminal .terminal-input-row input:focus,
+.terminal .terminal-input-row input:focus-visible {
+  background: transparent;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 4px 0;
+  height: 32px;
+  font: 18px/1.3 var(--mono);
+  caret-color: var(--terminal-ink);
+}
 .terminal-input-row input::placeholder { opacity: 1; }
-.terminal-input-row > button { border-radius: 0; box-shadow: 2px 2px 0 var(--line); }
-.terminal-input-row > button:hover { background: var(--terminal-ink); color: #000; }
+.terminal-input-row > button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--terminal-muted);
+  box-shadow: none;
+}
+.terminal-input-row > button:hover {
+  background: var(--accent-soft);
+  color: var(--terminal-ink);
+}
 .terminal-footer { font: 16px/1.25 var(--mono); flex-wrap: wrap; gap: 4px 12px; }
 .terminal :focus-visible { outline: 2px solid var(--terminal-ink); outline-offset: -2px; }
 .terminal ::selection { color: #000; background: var(--terminal-ink); }
 
+/* Keep a comfortable hit area on touch devices without restoring a box. */
+@media (pointer: coarse) {
+  .terminal .terminal-input-row input { min-height: 40px; }
+  .terminal-input-row > button { width: 40px; height: 40px; }
+}
 @media (max-width: 980px) {
   .lesson-tab-panel { height: clamp(300px, 60dvh, 520px); }
 }
