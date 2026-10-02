@@ -132,3 +132,11 @@ test('browser-only note and GitHub repository link live in the global footer',as
  await expect(github).toHaveAttribute('target','_blank');
  await expect(github).toHaveAttribute('rel',/noopener/);
 });
+
+
+test('personal notes omit the browser-only helper when empty',async({page})=>{
+ await freeLab(page);
+ const notes=page.locator('.personal-notes');
+ await expect(notes).toContainText('Kendi notların');
+ await expect(notes).not.toContainText('Sadece bu tarayıcıda');
+});
