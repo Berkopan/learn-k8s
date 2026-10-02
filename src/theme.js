@@ -1,12 +1,14 @@
 /** Appearance is independent of the versioned learning record. */
 export const THEME_KEY = 'learn-k8s:theme:v1';
-export const THEMES = ['dark', 'light', 'system'];
-export const normalizeTheme = value => THEMES.includes(value) ? value : 'dark';
+export const THEMES = ['dark', 'light'];
+export const normalizeTheme = value => THEMES.includes(value) ? value : null;
 export const resolveTheme = (preference, systemDark) =>
-  normalizeTheme(preference) === 'system' ? (systemDark ? 'dark' : 'light') : normalizeTheme(preference);
+  normalizeTheme(preference) ?? (systemDark ? 'dark' : 'light');
 export function readTheme(storage) {
-  try { return normalizeTheme(storage?.getItem(THEME_KEY)); } catch { return 'dark'; }
+  try { return normalizeTheme(storage?.getItem(THEME_KEY)); } catch { return null; }
 }
 export function writeTheme(storage, preference) {
-  try { storage?.setItem(THEME_KEY, normalizeTheme(preference)); return !!storage; } catch { return false; }
+  const next = normalizeTheme(preference);
+  if (!next) return false;
+  try { storage?.setItem(THEME_KEY, next); return !!storage; } catch { return false; }
 }

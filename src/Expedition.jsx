@@ -30,30 +30,34 @@ export function Insignia({module=0, size=46}) {
   return <span className="insignia" style={{'--sigil-size':`${size}px`}} aria-hidden="true"><Icon name={moduleIcons[module]} size={Math.round(size*.48)}/></span>;
 }
 export function useAppearance() {
-  const [preference, setPreference] = useState(()=>{try{return readTheme(window.localStorage);}catch{return 'dark';}});
+  const [preference, setPreference] = useState(()=>{try{return readTheme(window.localStorage);}catch{return null;}});
+  const [systemDark, setSystemDark] = useState(()=>window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const theme=resolveTheme(preference,systemDark);
   useEffect(()=>{
     const media=window.matchMedia('(prefers-color-scheme: dark)');
-    const apply=()=>{
-      const theme=resolveTheme(preference,media.matches);
-      document.documentElement.dataset.theme=theme;
-      document.documentElement.style.colorScheme=theme;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#101722':'#f3eee3');
-    };
-    apply(); media.addEventListener('change',apply);
-    return ()=>media.removeEventListener('change',apply);
-  },[preference]);
+    const syncSystem=()=>setSystemDark(media.matches);
+    syncSystem(); media.addEventListener('change',syncSystem);
+    return ()=>media.removeEventListener('change',syncSystem);
+  },[]);
+  useEffect(()=>{
+    document.documentElement.dataset.theme=theme;
+    document.documentElement.style.colorScheme=theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#101722':'#f3eee3');
+  },[theme]);
   useEffect(()=>{
     const sync=e=>{if(e.key===THEME_KEY)setPreference(normalizeTheme(e.newValue));};
     window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync);
   },[]);
-  return [preference, value=>{
-    const next=normalizeTheme(value);setPreference(next);
+  return [theme, value=>{
+    const next=normalizeTheme(value);
+    if(!next)return;
+    setPreference(next);
     try{writeTheme(window.localStorage,next);}catch{/* Keep the in-memory choice if persistence is unavailable. */}
   }];
 }
 export function ThemeSwitch({value,onChange}) {
   return <div className="theme-switch" role="group" aria-label={t('Görünüm teması')}>
-    {[['light','sun',t('Aydınlık tema')],['dark','moon',t('Karanlık tema')],['system','monitor',t('Sistem teması')]].map(([key,icon,label])=>
+    {[['light','sun',t('Aydınlık tema')],['dark','moon',t('Karanlık tema')]].map(([key,icon,label])=>
       <button type="button" key={key} aria-label={label} title={label} aria-pressed={value===key} onClick={()=>onChange(key)}><Icon name={icon} size={17}/></button>)}
   </div>;
 }
