@@ -278,6 +278,7 @@ export default {
   "Uygula · sonucu izle": "Apply · watch the result",
   "Canlı laboratuvar": "Live laboratory",
   "%100 tarayıcı içinde": "100% in your browser",
+  "Tarayıcıda çalışır · gerçek kümeye bağlanmaz": "Runs in your browser · never connects to a real cluster",
   "Laboratuvar araçları": "Lab tools",
   "Dosyalar": "Files",
   "Kaynaklar": "Resources",
