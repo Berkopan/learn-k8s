@@ -82,7 +82,7 @@ export function ExpeditionShell({view,progress,onMap,onLab,onCourse,onModal,chil
       </div>
     </div></header>
     <main className={`main main-${view}`}>{children}</main>
-    <footer className="site-footer"><span><Helm size={20}/>learn-k8s <i>/</i> {t('Küme seferleri')}</span><span className="footer-browser-note"><Icon name="lock" size={12}/>{t('%100 tarayıcı içinde')}</span><a className="footer-link" href="https://github.com/Berkopan/learn-k8s" target="_blank" rel="noopener noreferrer"><Icon name="code" size={13}/>GitHub</a><button onClick={()=>onModal('about')}>{t('Simülasyonun sınırları')} <Icon name="external" size={13}/></button></footer>
+    <footer className="site-footer"><span><Helm size={20}/>learn-k8s <i>/</i> {t('Küme seferleri')}</span><span className="footer-browser-note"><Icon name="lock" size={12}/>{t('Tarayıcıda çalışır · gerçek kümeye bağlanmaz')}</span><a className="footer-link" href="https://github.com/Berkopan/learn-k8s" target="_blank" rel="noopener noreferrer"><Icon name="code" size={13}/>GitHub</a><button onClick={()=>onModal('about')}>{t('Simülasyonun sınırları')} <Icon name="external" size={13}/></button></footer>
   </>;
 }
 function Chart({progress}) {
@@ -129,6 +129,5 @@ export function Atlas({progress,onGo,onCourse,onModal}) {
         return <button type="button" key={m.id} className={`module-card ${current?'is-current':''} ${locked?'is-locked':''} ${done?'is-done':''}`} onClick={()=>onCourse(m.id)} aria-label={t('{0}. {1}, {2}/8 seviye{3}; seviyeleri incele',[m.id+1,m.title,count,locked?t(', kilitli'):''])}><div className="module-card-top"><span className="module-index">{t('BÖLÜM')} {pad(m.id+1)}</span><span className="module-card-status">{done?<><Icon name="check" size={12}/>{t('TAMAMLANDI')}</>:current?t('SIRADAKİ'):locked?<><Icon name="lock" size={12}/>{t('KİLİTLİ')}</>:t('AÇIK')}</span></div><Insignia module={m.id}/><h4>{m.title}</h4><p>{m.subtitle}</p><div className="module-card-bottom"><div className="chapter-ticks" aria-hidden="true">{Array.from({length:8},(_,i)=><i key={i} className={progress.completed[m.id*8+i+1]?'done':''}/>)}</div><span>{count}/8<Icon name="arrow" size={15}/></span></div></button>;
       })}</div></section>)}
     </section>
-    <div className="atlas-footnote"><Icon name="info" size={17}/><p>{t('Bu rota tamamen tarayıcında çalışır. Komutlar bir simülasyonu değiştirir; gerçek bir kümeye bağlanmaz. İlerlemen bu cihazda saklanır.')}</p><button onClick={()=>onModal('settings')}>{t('Kaydını yönet')} <Icon name="arrow" size={15}/></button></div>
   </div>;
 }
