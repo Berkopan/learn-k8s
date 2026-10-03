@@ -121,12 +121,14 @@ test('retro navbar uses pixel chrome without sacrificing theme controls',async({
 });
 
 
-test('browser-only note and GitHub repository link live in the global footer',async({page})=>{
+test('compact simulation note and GitHub repository link live in the global footer',async({page})=>{
  await freeLab(page);
  const workspace=page.locator('.workspace');
  const footer=page.locator('.site-footer');
- await expect(workspace).not.toContainText('%100 tarayıcı içinde');
- await expect(footer).toContainText('%100 tarayıcı içinde');
+ await expect(workspace).not.toContainText('Tarayıcıda çalışır · gerçek kümeye bağlanmaz');
+ await expect(footer).toContainText('Tarayıcıda çalışır · gerçek kümeye bağlanmaz');
+ await expect(page.locator('.atlas-footnote')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Kaydını yönet'})).toHaveCount(0);
  const github=footer.getByRole('link',{name:'GitHub',exact:true});
  await expect(github).toHaveAttribute('href','https://github.com/Berkopan/learn-k8s');
  await expect(github).toHaveAttribute('target','_blank');
