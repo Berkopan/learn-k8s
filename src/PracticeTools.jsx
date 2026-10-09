@@ -57,7 +57,7 @@ export function Prediction({prediction,choice,onChoice}) {
   if(!prediction)return null;
   return <details className="prediction-check">
     <summary><Icon name="hint" size={15}/>{t('Önce tahmin et · isteğe bağlı')}</summary>
-    <div className="prediction-content"><h3>{prediction.question}</h3>
+    <div className="prediction-content"><h2>{prediction.question}</h2>
       <div className="prediction-options" role="group" aria-label={prediction.question}>{prediction.options.map((option,index)=>
         <button key={index} aria-pressed={choice===index} className={choice===index?(choice===prediction.answer?'correct':'incorrect'):''} onClick={()=>onChoice(index)}>{option}</button>
       )}</div>

@@ -36,6 +36,8 @@ test('independent incidents expose symptoms, accept semantic repairs and create 
   await expect(page.locator('.reward-dialog .challenge-debrief')).toContainText(challenge.debrief);
   expect((await saved(page)).practice[challenge.sourceKey].challengeSuccesses).toBe(1);
   await page.getByRole('button',{name:'Burada denemeye devam et',exact:true}).click();
+  await page.getByRole('tab',{name:'Şimdi uygula',exact:true}).click();
+  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
   await page.getByRole('button',{name:'Yeni varyant',exact:true}).click();
   await expect(page).toHaveURL(/&seed=43$/);
   await expect(page.locator('.lesson-tab-count')).toHaveText('0/1');
@@ -83,6 +85,7 @@ test('optional prediction preserves its choice on reload without advancing the l
   const prediction=predictionFor(56,'en');
   await page.locator('.prediction-options button').nth(prediction.answer).click();
   await expect(page.locator('.prediction-content [role="status"]')).toContainText(prediction.explanation);
+  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
   await expect(page.locator('.lesson-tab-count')).toHaveText(`0/${levels[55].steps.length}`);
   expect(Object.keys((await saved(page)).completed)).toHaveLength(0);
   await page.reload();
