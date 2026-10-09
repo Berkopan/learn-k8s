@@ -25,7 +25,9 @@ This is a teaching model, not a conformant Kubernetes implementation. Every comm
 
 ## Operational restrictions
 
-Commands are single invocations. Pipes, redirection, command chaining, arbitrary shells and external network requests are rejected. Unsupported verbs and selected unsupported flags are rejected. The parser is intentionally not a full shell or kubectl argument parser; some otherwise valid real syntax must be adapted to the documented subset.
+Commands are single invocations. Pipes, redirection, command chaining, arbitrary shells and external network requests are rejected. Flags are checked against the supported command, so a recognized option is never silently accepted for an unrelated operation. The parser is intentionally not a full shell or kubectl argument parser; some otherwise valid real syntax must be adapted to the documented subset.
+
+`kubectl run`, `create`, `apply` and `delete` support `--dry-run=client|server|none`. Client and server previews both use the local model's validation and never persist resources, run controllers, or count as completed mutation tasks. They do not emulate real API discovery, admission webhooks, field ownership or the differences between client-side and server-side validation. Other commands reject dry-run instead of ignoring it. YAML and JSON output are supported for these four operations, including previews.
 
 The educational maximum is 12 replicas, not a Kubernetes maximum. A level can have at most 25 editable lab YAML files and each editor document is bounded at 200 KB. The terminal bounds command size, visible transcript and command history. These limits keep accidental input from freezing the visual workbench; they are not a security sandbox for untrusted real-cluster artifacts.
 

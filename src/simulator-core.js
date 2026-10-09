@@ -32,10 +32,63 @@ export function parse(input) {
       if(!knownFlags.has(key))throw new Error(`Desteklenmeyen seçenek: ${w}. help komutuyla desteklenen sözdizimini gör.`);
       let value=rest.length?rest.join('='):booleanFlags.has(key)?true:words[++i];
       if(value===undefined)throw new Error(`--${key} için bir değer gerekli.`);
+      if(booleanFlags.has(key)&&rest.length){
+        if(!['true','false'].includes(value))throw new Error(`--${key} yalnız true veya false kabul eder.`);
+        value=value==='true';
+      }
       if(key==='from-literal')flags[key]=[...(flags[key]||[]),value];else flags[key]=value;
     }else args.push(w);
   }
   return {binary,args,flags,tail};
+}
+// A flag being recognized by the tokenizer does not make it meaningful for every
+// command. Reject unsupported combinations before any simulated mutation occurs.
+export function validateInvocation({binary,args,flags,tail}) {
+  if(binary==='docker')return; // Docker has its own command and arity contract.
+  let permitted=[],command=binary;
+  if(binary==='kubectl'){
+    const [verb,sub]=args;
+    command=`kubectl ${verb||''}`.trim();
+    const common=['n','namespace','as'];
+    const reads=['A','all-namespaces','l','selector','field-selector'];
+    const output=['o','output'];
+    const dryRun=['dry-run',...output];
+    const byVerb={
+      get:[...reads,...output,'show-labels'],describe:reads,top:['A','all-namespaces','l','selector'],
+      run:['image','env',...dryRun],apply:['f','filename',...dryRun],diff:['f','filename'],
+      delete:['f','filename','all',...dryRun],scale:['replicas'],
+      expose:['name','port','target-port','type'],label:['overwrite'],annotate:['overwrite'],patch:['type','p','patch'],
+      logs:['previous'],exec:[], 'port-forward':[],autoscale:['min','max','cpu-percent'],auth:[],
+      cordon:[],uncordon:[],drain:['ignore-daemonsets','force'],taint:[],wait:['for','timeout'],
+      version:[],'cluster-info':[],'api-resources':[],explain:[]
+    };
+    if(verb==='create'){
+      const byKind={Deployment:['image','replicas'],ConfigMap:['from-literal'],Secret:['from-literal'],
+        Namespace:[],ServiceAccount:[],Role:['verb','resource'],RoleBinding:['role','serviceaccount'],
+        Job:['image','from'],CronJob:['image','schedule'],Ingress:['class','rule']};
+      permitted=[...common,...dryRun,...(byKind[kindOf(sub)]||[])];
+      command+=` ${sub||''}`;
+    }else if(verb==='set'){
+      permitted=[...common,...({image:[],env:['from'],resources:['requests','limits']}[sub]||[])];
+      command+=` ${sub||''}`;
+    }else if(verb==='rollout'){
+      permitted=[...common,...(sub==='undo'?['to-revision']:[])];
+      command+=` ${sub||''}`;
+    }else if(verb==='config'){
+      permitted=sub==='set-context'?['current','namespace']:[];
+      command+=` ${sub||''}`;
+    }else permitted=[...common,...(byVerb[verb]||[])];
+    if(tail.length&&verb!=='exec'&&!(verb==='create'&&kindOf(sub)==='Job'))throw new Error('Bu komut container komut kuyruğu kabul etmez.');
+    if(flags['dry-run']!==undefined&&!['none','client','server'].includes(flags['dry-run']))throw new Error('--dry-run için none, client veya server kullan.');
+    const format=flags.o??flags.output;
+    const formats=verb==='get'?['yaml','json','wide']:['yaml','json'];
+    if(format!==undefined&&!formats.includes(format))throw new Error(`Çıktı biçimi desteklenmiyor: ${format}. Desteklenenler: ${formats.join(', ')}.`);
+  }else if(binary==='helm'){
+    command=`helm ${args[0]||''}`.trim();
+    permitted=['install','upgrade'].includes(args[0])?['n','namespace','set']:['n','namespace'];
+    if(tail.length)throw new Error('Bu komut container komut kuyruğu kabul etmez.');
+  }else if(tail.length)throw new Error('Bu komut container komut kuyruğu kabul etmez.');
+  for(const flag of Object.keys(flags))if(!permitted.includes(flag))throw new Error(`${command}: --${flag} bu komut için desteklenmiyor. help ile desteklenen sözdizimini gör.`);
 }
 export const objects = (s,kind,ns) => s.objects.filter(o=>(!kind||o.kind===kind)&&(!ns||isCluster(o.kind)||o.metadata.namespace===ns));
 export const find = (s,kind,name,ns=s.namespace) => objects(s,kind,ns).find(o=>o.metadata.name===name);

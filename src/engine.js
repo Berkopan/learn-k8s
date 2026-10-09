@@ -1,12 +1,14 @@
 import {helpText,helpTopic,validateDockerInvocation,dockerSuggestions} from './command-help.js';
 import {copy, object, pod, deployment, service, job, cron, meta, isCluster, subset, merge, yaml, refKey, pathGet} from './model.js';
-import { kindOf, tokenize, parse, objects, find, quantity, matches, createLab, aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, traffic } from './simulator-core.js';
+import { kindOf, tokenize, parse, validateInvocation, objects, find, quantity, matches, createLab, aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, traffic } from './simulator-core.js';
 export { kindOf, tokenize, parse, objects, find, quantity, matches, createLab };
-function execute(s,input){
-  const q=parse(input),{binary,args:a,flags:f,tail}=q;const ns=String(f.n||f.namespace||s.namespace);let event={action:binary,namespace:ns},out='';
+const renderObjects=(items,format)=>format==='json'?JSON.stringify(items.length===1?clean(items[0]):{apiVersion:'v1',kind:'List',items:items.map(clean)},null,2):items.map(r=>yaml(clean(r))).join('\n---\n');
+function execute(s,q){
+  const {binary,args:a,flags:f,tail}=q;const ns=String(f.n||f.namespace||s.namespace);let event={action:binary,namespace:ns},out='';
   if(!binary)return {out:'',event:null};
   const topic=helpTopic(q);
   if(topic!==null)return {out:helpText(topic),event:{action:'help',topic}};
+  validateInvocation(q);
   if(binary==='clear'||binary==='history')return {out:'',event:{action:binary}};
   if(binary==='ls')return {out:Object.keys(s.files).join('\n')||'(bu laboratuvarda dosya yok)',event:{action:'ls'}};
   if(binary==='cat'){if(!s.files[a[0]])throw new Error(`Dosya bulunamadı: ${a[0]}`);return {out:typeof s.files[a[0]]==='string'?s.files[a[0]]:s.files[a[0]].map(y=>yaml(y)).join('\n---\n'),event:{action:'cat',file:a[0]}};}
@@ -76,7 +78,7 @@ function execute(s,input){
     else {out=listRows(items,(f.o||f.output)==='wide');if(f['show-labels'])out+='\n\nLABELS\n'+items.map(r=>`${r.metadata.name}: ${Object.entries(r.metadata.labels||{}).map(([k,v])=>`${k}=${v}`).join(',')||'<none>'}`).join('\n');}
     pushTrace(s,'API server',`${kind}: ${items.length} kaynak okundu.`);return {out,event};
   }
-  if(verb==='run'){if(!a[0]||!f.image)throw new Error('kubectl run NAME --image=IMAGE gerekli.');const r=pod(a[0],{containers:[{name:a[0],image:f.image,...(f.env?{env:[{name:String(f.env).split('=')[0],value:String(f.env).split('=').slice(1).join('=')}]}:{})}]},{run:a[0]});r.metadata.namespace=ns;put(s,r,{create:true});event={...event,kind:'Pod',name:a[0]};out=`pod/${a[0]} created`;}
+  if(verb==='run'){if(!a[0]||!f.image)throw new Error('kubectl run NAME --image=IMAGE gerekli.');const r=pod(a[0],{containers:[{name:a[0],image:f.image,...(f.env?{env:[{name:String(f.env).split('=')[0],value:String(f.env).split('=').slice(1).join('=')}]}:{})}]},{run:a[0]});r.metadata.namespace=ns;const saved=put(s,r,{create:true});event={...event,kind:'Pod',name:a[0],output:f.o||f.output};out=event.output?renderObjects([saved],event.output):`pod/${a[0]} created`;}
   else if(verb==='create'){
     let [raw,name]=a,kind=kindOf(raw),r;event={...event,kind,name};
     if(kind==='Namespace')r=object(kind,name,{}, {metadata:{name,labels:{'kubernetes.io/metadata.name':name}}});
@@ -90,19 +92,18 @@ function execute(s,input){
     else if(kind==='Ingress'){const match=String(f.rule||'').match(/^([^/]+)\/\*=([^:]+):(\d+)$/);if(!match)throw new Error('--rule="HOST/*=SERVICE:PORT" gerekli.');r=object(kind,name,{ingressClassName:f.class||'nginx',rules:[{host:match[1],http:{paths:[{path:'/',pathType:'Prefix',backend:{service:{name:match[2],port:{number:Number(match[3])}}}}]}}]});}
     else throw new Error('Bu create türü desteklenmiyor; YAML ile apply kullan.');
     r.metadata.namespace=ns;
-    if(f['dry-run']==='client')return {out:yaml(r),event:{...event,action:'dry-run'}};
-    put(s,r,{create:true});out=`${kind.toLowerCase()}/${name} created`;
+    const saved=put(s,r,{create:true});event.output=f.o||f.output;out=event.output?renderObjects([saved],event.output):`${kind.toLowerCase()}/${name} created`;
   }
   else if(['apply','diff'].includes(verb)){
     const file=f.f||f.filename;if(!file||!s.files[file]||typeof s.files[file]==='string')throw new Error('Geçerli bir lab YAML dosyası gerekli. ls ile dosyaları gör.');
     const docs=copy(s.files[file]);if(!docs.length)throw new Error('Manifest boş.');event={...event,file};
     for(const r of docs){if(f.n||f.namespace)r.metadata.namespace=ns;validate(s,r);}
     if(verb==='diff'){out=docs.map(r=>{const existing=find(s,r.kind,r.metadata.name,r.metadata.namespace||ns);return subset(existing,r)?`= ${r.kind}/${r.metadata.name}: değişiklik yok`:`+ ${r.kind}/${r.metadata.name}\n${yaml(r)}`;}).join('\n');return {out,event};}
-    out=docs.map(r=>{put(s,r);return `${r.kind.toLowerCase()}/${r.metadata.name} configured`;}).join('\n');
+    const saved=docs.map(r=>put(s,r));event.output=f.o||f.output;out=event.output?renderObjects(saved,event.output):saved.map(r=>`${r.kind.toLowerCase()}/${r.metadata.name} configured`).join('\n');
   }
   else if(verb==='delete'){
-    let targets;if(f.f){if(!s.files[f.f]||typeof s.files[f.f]==='string')throw new Error('YAML dosyası bulunamadı.');targets=s.files[f.f].map(r=>ensure(s,r.kind,r.metadata.name,r.metadata.namespace||ns));}else{const {kind,name}=resourceArgs(a);event={...event,kind,name};if(!name&&!f.all)throw new Error('Kaynak adı ya da --all gerekli.');targets=name?[ensure(s,kind,name,ns)]:objects(s,kind,ns);}
-    for(const r of targets){s.objects=s.objects.filter(o=>o!==r&&!(o.metadata.namespace===r.metadata.namespace&&(o._sim?.owner===`${r.kind}/${r.metadata.name}`||r.kind==='Deployment'&&o.kind==='ReplicaSet'&&o._sim?.owner===r.metadata.name))&&!(r.kind==='Namespace'&&o.metadata.namespace===r.metadata.name));if(r.kind==='PersistentVolumeClaim')for(const pv of objects(s,'PersistentVolume'))if(pv.spec.claimRef?.name===r.metadata.name&&pv.spec.claimRef.namespace===r.metadata.namespace)pv.status={phase:'Released'};pushTrace(s,'API server',`${r.kind}/${r.metadata.name} silindi.`,'remove');}out=targets.map(r=>`${r.kind.toLowerCase()}/${r.metadata.name} deleted`).join('\n')||'No resources found.';
+    const file=f.f||f.filename;let targets;if(file){if(!s.files[file]||typeof s.files[file]==='string')throw new Error('YAML dosyası bulunamadı.');targets=s.files[file].map(r=>ensure(s,r.kind,r.metadata.name,(f.n||f.namespace)?ns:r.metadata.namespace||ns));}else{const {kind,name}=resourceArgs(a);event={...event,kind,name};if(!name&&!f.all)throw new Error('Kaynak adı ya da --all gerekli.');targets=name?[ensure(s,kind,name,ns)]:objects(s,kind,ns);}
+    for(const r of targets){s.objects=s.objects.filter(o=>o!==r&&!(o.metadata.namespace===r.metadata.namespace&&(o._sim?.owner===`${r.kind}/${r.metadata.name}`||r.kind==='Deployment'&&o.kind==='ReplicaSet'&&o._sim?.owner===r.metadata.name))&&!(r.kind==='Namespace'&&o.metadata.namespace===r.metadata.name));if(r.kind==='PersistentVolumeClaim')for(const pv of objects(s,'PersistentVolume'))if(pv.spec.claimRef?.name===r.metadata.name&&pv.spec.claimRef.namespace===r.metadata.namespace)pv.status={phase:'Released'};pushTrace(s,'API server',`${r.kind}/${r.metadata.name} silindi.`,'remove');}event.output=f.o||f.output;out=event.output?renderObjects(targets,event.output):targets.map(r=>`${r.kind.toLowerCase()}/${r.metadata.name} deleted`).join('\n')||'No resources found.';
   }
   else if(['scale','expose','label','annotate','patch'].includes(verb)){
     const {kind,name}=resourceArgs(a),r=ensure(s,kind,name,ns);event={...event,kind,name};
@@ -142,12 +143,20 @@ function execute(s,input){
   else if(verb==='taint'){const {kind,name}=resourceArgs(a);if(kind!=='Node')throw new Error('Node gerekli.');const n=ensure(s,kind,name),text=a.at(-1);event={...event,kind,name};if(text.endsWith('-')){const key=text.slice(0,-1).split(':')[0];n.spec.taints=n.spec.taints.filter(t=>t.key!==key);}else{const m=text.match(/^([^=]+)=([^:]+):(NoSchedule|PreferNoSchedule)$/);if(!m)throw new Error('KEY=VALUE:NoSchedule biçimini kullan.');n.spec.taints=[...n.spec.taints.filter(t=>t.key!==m[1]),{key:m[1],value:m[2],effect:m[3]}];}out=`node/${name} tainted`;}
   else if(verb==='wait'){const {kind,name}=resourceArgs(a),r=ensure(s,kind,name,ns),condition=String(f.for||'').replace('condition=','').toLowerCase();const ok=condition==='ready'?r.status?.ready:condition==='available'?(r.status?.availableReplicas||0)>0:condition==='complete'?(r.status?.succeeded||0)>0:false;if(!ok)throw new Error(`Timeout (simulated): ${kind}/${name} ${condition} koşulu henüz sağlanmıyor.`);event={...event,kind,name,condition};out=`${kind}/${name} condition met`;}
   else throw new Error(`kubectl ${verb}: bu simülatörde desteklenmiyor. help ile desteklenen komutları gör.`);
-  reconcile(s);return {out,event};
+  if(!f['dry-run']||f['dry-run']==='none')reconcile(s);return {out,event};
 }
 /** Transactional: errors never partially mutate the caller's cluster. */
 export function run(state,input) {
   const next=copy(state);next.trace=[];
-  try{const {out,event}=execute(next,input);if(event)next.events.push(event);next.events=next.events.slice(-250);if(!next.trace.length)pushTrace(next,'Terminal',event?.action==='help'?'Komut referansı açıldı.':'İşlem tamamlandı; kaynak durumu korundu.');return {state:next,output:out,error:false,event};}
+  try{
+    const invocation=parse(input),mode=invocation.flags['dry-run'];
+    const {out,event}=execute(next,invocation);
+    if(invocation.binary==='kubectl'&&['client','server'].includes(mode)&&event?.action!=='help'){
+      const dryEvent={...event,action:'dry-run',operation:event.action,mode};
+      return {state:{...state,trace:[{actor:'API / CLI',text:`Dry run (${mode}): küme durumu değiştirilmedi.`,tone:'normal'}]},output:event.output?out:`${out} (dry run: ${mode})`,error:false,event:dryEvent};
+    }
+    if(event)next.events.push(event);next.events=next.events.slice(-250);if(!next.trace.length)pushTrace(next,'Terminal',event?.action==='help'?'Komut referansı açıldı.':'İşlem tamamlandı; kaynak durumu korundu.');return {state:next,output:out,error:false,event};
+  }
   catch(error){return {state:{...state,trace:[{actor:'API / CLI',text:error.message,tone:'error'}]},output:error.message,error:true};}
 }
 export function goalMet(s,g){
