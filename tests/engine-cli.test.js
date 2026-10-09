@@ -87,3 +87,14 @@ test('explicit false boolean flags do not become truthy strings',()=>{
   assert.ok(find(result.state,'Pod','sample'));
   assert.equal(run(state,'kubectl delete pods --all=maybe').error,true);
 });
+
+test('the documented current-context namespace command selects the requested namespace',()=>{
+  const state=createLab();
+  const result=run(state,'kubectl config set-context --current --namespace=staging');
+  assert.equal(result.error,false,result.output);
+  assert.equal(result.state.namespace,'staging');
+  assert.equal(state.namespace,'default');
+  const rejected=run(state,'kubectl config set-context --current=false --namespace=staging');
+  assert.equal(rejected.error,true);
+  assert.equal(rejected.state.namespace,'default');
+});
