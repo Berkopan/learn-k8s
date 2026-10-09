@@ -210,11 +210,13 @@ export default {
   },
   27: {
     title: 'A Pod factory instead of a single Pod',
-    steps: ['Apply the Deployment manifest requesting two replicas.'],
-    caution: 'Deployment metadata.labels and template.metadata.labels are different. A Service usually selects the Pod template’s labels.',
+    steps: ["Set the Pod template label in deployment.yaml to app=web, save it, and apply two replicas."],
+    caution: "Deployment metadata.labels and template.metadata.labels are different. Edit spec.template.metadata.labels here so that the Pod labels match the controller selector.",
     why: 'Instead of manually creating one instance, you may want to say “keep two copies of this application available.” That requires both a recipe for producing copies and a target count. A Deployment expresses this broader intention.',
-    how: 'A Deployment manifest contains a Pod template and a replica count. Its controller uses ReplicaSets and Pods to maintain the target. Labels on the Deployment itself are separate from labels in the Pod template; only the latter automatically describe the produced Pods.',
-    practice: 'Apply deployment.yaml, which requests two web replicas. Watch one Deployment lead to two Pod instances. In Resources, inspect the ReplicaSet between them. You did not write two independent application recipes: you requested two instances of one template.'
+    how: "A Deployment manifest contains a Pod template and replica count. Its spec.selector.matchLabels must match the labels of the Pods it produces. Changing the Deployment’s own metadata labels is different. The prepared file has the wrong template label; you will repair that link before creating two instances.",
+    practice: "Open deployment.yaml in Files. Set spec.template.metadata.labels.app to web, save, and apply it in the terminal. Watch one Deployment produce two ready Pods. Both the saved definition and live result are checked; creating two unrelated Pods does not fulfill the task.",
+    hints: ["In Files, find spec.template.metadata.labels.app. Repair the label of the Pods to be produced, not the Deployment’s own metadata label."],
+    syntaxHints: ["spec.template.metadata.labels.app: web → save → kubectl apply -f deployment.yaml"],
   },
   28: {
     title: 'Preview before creating',
@@ -234,11 +236,13 @@ export default {
   },
   30: {
     title: 'Declarative scaling',
-    steps: ['Reach the manifest’s target of three replicas.'],
+    steps: ["Edit deployment.yaml to request three replicas, save it, and apply it."],
     caution: 'Keep the source file updated in real team workflows. Divergence between the live cluster and Git’s desired state is configuration drift.',
     why: 'Changing a live environment while leaving its recipe outdated makes it easy to restore the wrong target later. Tracking the desired state in a file reduces that confusion. Now we will submit a scaling request through the manifest.',
-    how: '`replicas` specifies the number of Pod instances wanted. When you apply the manifest, the controller compares that target with the current count and creates missing instances. This is not manually defining three separate Pods. The file becomes a reviewable record of the intention.',
-    practice: 'Apply deployment.yaml, which requests three replicas. Watch web grow from one instance to three ready instances. The file and the live Deployment should now agree on their target count. Remember that changing scale and changing the image version are different operations.'
+    how: "The spec.replicas field records the requested Pod count. The saved file and live API object are separate states: saving does not change the cluster, and scale does not update the file. After saving and applying the new definition, the controller creates missing instances and the two targets agree.",
+    practice: "Both deployment.yaml and web initially request one replica. In Files, change the count to three and save; you can inspect the change with diff before applying it. Using scale alone grows the live cluster but leaves the file check incomplete. Feedback tells you which definition is still out of date.",
+    hints: ["Edit spec.replicas in the file. Save, optionally inspect the diff, then apply; changing the live object with scale does not update the saved definition."],
+    syntaxHints: ["spec.replicas: 3 → save → kubectl diff -f deployment.yaml → kubectl apply -f deployment.yaml"],
   },
   31: {
     title: 'One file, several resources',

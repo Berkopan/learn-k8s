@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {levels} from '../../src/curriculum.js';
+import {applyReferenceFiles} from './reference-steps.js';
 async function command(page,text){await page.locator('#terminal-input').fill(text);await page.locator('#terminal-input').press('Enter');}
 async function freeExplore(page,id=1){await page.addInitScript(({id})=>{const p={version:1,completed:{},bookmarks:[],notes:{},quiz:{},active:id,days:[],settings:{free:true,reduced:true,speed:2,sound:false}};localStorage.setItem('learn-k8s:progress:v1',JSON.stringify(p));},{id});await page.goto(`/#level=${id}`);}
 test('first lesson, errors, reward, persistence and no duplicate XP',async({page},info)=>{
@@ -10,9 +11,12 @@ test('first lesson, errors, reward, persistence and no duplicate XP',async({page
  await command(page,'docker pull nginx:1.27');await expect(page.locator('.mission-heading>b')).toHaveText('1/2');
  await command(page,'docker images');await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta strong')).toHaveText('+40 XP');
  await page.getByRole('button',{name:'Burada denemeye devam et'}).click();await page.reload();await expect(page.locator('.completed-label')).toBeVisible();
+ await expect(page.locator('.lesson-tab-count')).toHaveText('2/2');
+ await page.getByRole('button',{name:'Laboratuvarı sıfırla',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Laboratuvarı sıfırla',exact:true}).click();
  await command(page,'docker pull nginx:1.27');await command(page,'docker images');
  await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta strong')).toHaveText('Tekrar tamamlandı');
- const value=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v1')));expect(Object.keys(value.completed)).toHaveLength(1);
+ const value=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v2')));expect(Object.keys(value.completed)).toHaveLength(1);
  await page.screenshot({path:`test-results/${info.project.name}-02-reward.png`,fullPage:true});
 });
 test('all 128 guided lessons can be completed through the real UI',async({page},info)=>{
@@ -20,8 +24,8 @@ test('all 128 guided lessons can be completed through the real UI',async({page},
  // Real-motion timing, focus and confetti have dedicated coverage in reward.spec.js.
  await page.emulateMedia({reducedMotion:'reduce'});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.getByRole('button',{name:'Sefere başla',exact:true}).click();
- for(const level of levels){await expect(page.locator('.lesson-title-row h1')).toHaveText(level.title);for(const step of level.steps)await command(page,step.command);await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta>span')).toContainText(String(level.id).padStart(3,'0'));if(level.id<128)await page.getByRole('button',{name:'Sonraki laboratuvara geç'}).click();}
- const data=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v1')));expect(Object.keys(data.completed)).toHaveLength(128);expect(errors).toEqual([]);
+ for(const level of levels){await expect(page.locator('.lesson-title-row h1')).toHaveText(level.title);for(const step of level.steps){await applyReferenceFiles(page,step);await command(page,step.command);}await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta>span')).toContainText(String(level.id).padStart(3,'0'));if(level.id<128)await page.getByRole('button',{name:'Sonraki laboratuvara geç'}).click();}
+ const data=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v2')));expect(Object.keys(data.completed)).toHaveLength(128);expect(errors).toEqual([]);
  await page.screenshot({path:'test-results/desktop-03-final.png',fullPage:true});
 });
 

@@ -137,8 +137,8 @@ export default {
   },
   27: {
     why: 'Bir örneği elle oluşturmak yerine “bu uygulamadan iki tane sürekli bulunsun” demek isteyebilirsin. Bu istek, tek bir Pod tarifinden daha kapsamlıdır: örneklerin nasıl üretileceği ve kaç tane bulunacağı birlikte belirtilmelidir.',
-    how: 'Deployment manifesti bir Pod template’i, yani yeni örneklerin tarifi ile replica sayısını taşır. Controller bu hedefi korumak için ReplicaSet ve Pod nesneleri oluşturur. Deployment üzerindeki etiket ile üretilen Pod’ların template etiketleri ayrı alanlardır; bağlantıları incelerken bu fark önemlidir.',
-    practice: 'İki web örneği isteyen deployment.yaml dosyasını uygula. Küme görünümünde tek Deployment’a bağlı iki Pod oluşmasını izle; Kaynaklar sekmesinde aradaki ReplicaSet’i de inceleyebilirsin. Burada iki ayrı uygulama tarifi yazmadın, bir tarifin iki örneğini istedin.'
+    how: "Deployment manifesti Pod template’ini ve replica sayısını taşır. spec.selector.matchLabels, üretilen Pod template etiketleriyle eşleşmelidir. Deployment’ın kendi metadata.labels alanını değiştirmek aynı şey değildir. Burada dosyadaki template etiketi yanlış; iki örnek üretecek tarifin bağlantısını sen tamamlayacaksın.",
+    practice: "Dosyalar sekmesinde deployment.yaml dosyasını aç. spec.template.metadata.labels.app değerini web yapıp kaydet, sonra terminalden uygula. Tek Deployment’ın iki hazır Pod ürettiğini izle. Görev hem kaydedilmiş tanımı hem canlı sonucu kontrol eder; yalnız başka bir komutla iki Pod oluşturmak yeterli olmaz.",
   },
   28: {
     why: 'Bir nesneyi oluşturmadan önce taslağını görmek, hem öğrenirken hem değişiklik hazırlarken yararlıdır. Bir formun önizlemesi gibi, komutun hangi nesneyi üretmek istediğini inceleyebilirsin. Böylece deneme yapmak için canlı kaynak oluşturmak zorunda kalmazsın.',
@@ -152,8 +152,8 @@ export default {
   },
   30: {
     why: 'Canlı ortamı değiştirip tarif dosyasını eski bırakmak, daha sonra eski hedefin geri uygulanmasına yol açabilir. Aynı son durumu hem dosyada hem kümede takip etmek bu karışıklığı azaltır. Şimdi ölçekleme isteğini dosya üzerinden ileteceğiz.',
-    how: 'Manifestteki `replicas` alanı kaç Pod istendiğini belirtir. Apply edildiğinde controller mevcut sayıyla hedefi karşılaştırır ve eksik örnekleri üretir. Bu, üç Pod’u ayrı ayrı elle tanımlamak değildir. Sürüm kontrollü dosya, hedefin ekip tarafından görülebilen kaydı olur.',
-    practice: 'Üç replica isteyen deployment.yaml dosyasını uygula. Başlangıçta tek örneği olan web’in üç hazır örneğe ulaşmasını izle. Dosyadaki hedef ile canlı Deployment’ın hedefinin artık aynı olması gerekir. Ölçekleme talebinin image sürümünü değiştirmekten farklı olduğunu da koru.'
+    how: "Manifestteki spec.replicas kaç Pod istendiğini belirtir. Dosya kaydı ile canlı API nesnesi iki ayrı durumdur: editörde kaydetmek kümeyi değiştirmez, scale komutu da dosyayı güncellemez. Doğru kaynağı kaydedip apply edince controller eksik örnekleri oluşturur; hedefin iki yerde de aynı olması sağlanır.",
+    practice: "Başlangıçta hem deployment.yaml hem web bir replica istiyor. Dosyalar sekmesinde sayıyı üçe çıkar, kaydet ve istersen diff ile değişikliği incele. Ardından apply et. Yalnız scale yaptıysan canlı küme büyür ama dosya kontrolü tamamlanmaz; geri bildirim hangi tanımın geride kaldığını söyler.",
   },
   31: {
     why: 'Bir uygulamanın çalışması ve ona ulaşılabilmesi çoğu zaman birden fazla kaynak gerektirir. Bu ilişkili parçaları aynı dosyada görmek, aralarındaki bağlantıyı anlamayı kolaylaştırır. Ancak aynı dosyada bulunmaları tek bir nesne oldukları anlamına gelmez.',

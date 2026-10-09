@@ -1,4 +1,5 @@
 import {object, pod, deployment, service, config, secret, job, cron, claim, stateful, daemon, container, copy, meta} from '../model.js';
+import {KEY_TO_LEGACY_ID} from './legacy.js';
 
 export const CURRICULUM_VERSION = 1;
 export const K='https://kubernetes.io/docs/';
@@ -20,14 +21,21 @@ export const modules = [
   ['Platform araçları','Ingress, ağ politikası ve Helm','Platform kurucusu',K+'concepts/services-networking/network-policies/','kubectl apply -f FILE · helm install NAME ./chart'],
   ['Saha görevleri','Uçtan uca operasyon senaryoları','Küme kaptanı',K+'tasks/debug/debug-application/','Gözlemle → hipotez kur → düzelt → doğrula'],
 ].map(([title,subtitle,badge,source,syntax],id)=>({id,title,subtitle,badge,source,syntax}));
-export const E=(action,match={},times=1)=>({type:'event',match:{action,...match},times});
+export const E=(action,match={},times=1,scope='task')=>({type:'event',match:{action,...match},times,scope});
+export const HTTP=(service,port=80,source,namespace='default')=>({type:'event',match:{request:{service,namespace,port,status:200,...(source===undefined?{}:{source})}},times:1,scope:'task'});
+export const REACH=(service,port=80,source,namespace='default',allowed=true)=>({type:'reachable',service,port,source,namespace,allowed});
+export const PERMISSION=(verb,resource,allowed,identity='system:serviceaccount:default:reader',namespace='default')=>({type:'permission',verb,resource,allowed,identity,namespace});
 export const R=(kind,name,match={},namespace='default')=>({type:'resource',kind,name,match,namespace});
+export const ENV=(kind,name,container,match,namespace='default')=>({type:'runtimeEnv',kind,name,container,match,namespace});
+export const BACKENDS=(service,kind,name,namespace='default')=>({type:'serviceBackends',service,kind,name,namespace});
+export const F=(file,kind,name,match={},namespace='default')=>({type:'fileResource',file,kind,name,match,namespace});
 export const N=(kind,name,namespace='default')=>({type:'absent',kind,name,namespace});
 export const C=(kind,count,match={})=>({type:'count',kind,count,match});
 export const ALL=(...goals)=>({type:'all',goals});
 const goalClue=goal=>{
   if(!goal)return '';
   if(goal.type==='event')return ' Bu adımın başarısı bir gözlem olayıyla doğrulanır; yalnızca nesne yazmak yetmez.';
+  if(goal.type==='fileResource')return ` ${goal.file} dosyasındaki tanımı düzenleyip kaydet; canlı durumla birlikte doğrulanacak.`;
   if(goal.type==='resource')return ` Son durumda ${goal.kind}/${goal.name} üzerinde beklenen değişiklik görünmeli.`;
   if(goal.type==='absent')return ` Sonunda ${goal.kind}/${goal.name} artık bulunmamalı.`;
   if(goal.type==='count')return ` Sonuçta ${goal.kind} sayısının hedefe yaklaştığını gözlemle.`;
@@ -171,10 +179,11 @@ export const syntaxClue=command=>{
 
 export const S=(text,command,goal,hint,syntaxHint)=>({text,command,goal,hint:hint||'',syntaxHint:syntaxHint||''});
 export const levels=[];
-export function L(module,title,concept,mechanism,caution,steps,extra={}) {
+export function L(key,module,title,concept,mechanism,caution,steps,extra={}) {
+  if (!/^[a-z][a-z0-9.-]+$/.test(key) || levels.some(level => level.key === key)) throw new Error(`Invalid or duplicate lesson key: ${key}`);
   const id=levels.length+1;
   const contextualSteps=steps.map((step,index)=>({...step,hint:step.hint||contextualHint(title,step,index),syntaxHint:step.syntaxHint||syntaxClue(step.command)}));
-  levels.push({id,module,title,concept,mechanism,caution,steps:contextualSteps,seed:[],files:{},xp:40+Math.floor(module/4)*10+(id%8===0?40:0),minutes:steps.length+3,difficulty:module<4?'Temel':module<12?'Uygulama':'Saha',source:modules[module].source,...extra});
+  levels.push({id,key,legacyId:KEY_TO_LEGACY_ID[key],module,title,concept,mechanism,caution,steps:contextualSteps,seed:[],files:{},xp:40+Math.floor(module/4)*10+(id%8===0?40:0),minutes:steps.length+3,difficulty:module<4?'Temel':module<12?'Uygulama':'Saha',source:modules[module].source,...extra});
 }
 export const web=()=>deployment('web',2);
 export const client=()=>pod('client',{containers:[{name:'client',image:'busybox:1.37',command:['sleep','3600']}]},{app:'client'});

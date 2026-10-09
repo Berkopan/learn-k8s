@@ -17,11 +17,13 @@ export default {
   },
   67: {
     title: 'Repair the probe path',
-    steps: ['Apply the manifest with the correct readiness path.', 'Verify a healthy response through the Service.'],
+    steps: ["Set the readiness path in ready.yaml to /, save it, and apply it.", "Verify a healthy response through the Service."],
     caution: 'Choose real probe paths, timeouts and thresholds for your application. The root path is appropriate for this prepared nginx example, not a universal health endpoint.',
     why: 'A health check knocking on the wrong door can mark a healthy application unavailable. Restarting unrelated components will not fix the address of that check. Make the narrow correction that the evidence supports.',
-    how: 'The prepared ready.yaml replaces the incorrect /broken readiness path with /. Updating the Pod template produces instances evaluated with the correct check. Ready instances become eligible targets for normal Service traffic.',
-    practice: 'Apply the corrected definition and request web through the Service. Watch readiness and the request result recover together. The useful lesson is the chain from probe configuration to ready targets to traffic, not a rule to use / for every application you deploy.'
+    how: "A readiness probe must check an endpoint the application actually serves. Both the live Deployment and ready.yaml currently use the incorrect /broken path. Repair readinessProbe.httpGet.path in the saved definition. Instances produced from the corrected template can become ready Service targets.",
+    practice: "Open ready.yaml in Files, change the readiness path to /, and save. Apply it in the terminal, then request web through the Service. The saved file, ready replicas and successful request are all checked. Here / suits this nginx example; repair the check instead of removing it.",
+    hints: ["In Files, locate readinessProbe.httpGet.path. Repair readiness rather than adding liveness; saving the file and applying it are separate actions.", null],
+    syntaxHints: ["readinessProbe.httpGet.path: / → save → kubectl apply -f ready.yaml", null],
   },
   68: {
     title: 'Liveness: deciding when to restart',
@@ -210,10 +212,10 @@ export default {
   91: {
     title: 'Parallelism is not the total target',
     steps: ['Read the parallel Job definition.', 'Apply the Job with two workers and four required completions.'],
-    caution: 'The model shows the initial workers and target; tick is a teaching shortcut for completion, not a complete job-queue scheduler.',
+    caution: "Each lab tick completes only the workers currently running. Two workers need two steps for four completions; Pending or blocked workers are never counted as successful.",
     why: 'Two people can move four boxes. The amount of work and the number of workers doing it simultaneously are different numbers. Batch scheduling uses that distinction to control resource use while describing a larger overall task.',
-    how: 'parallelism limits concurrent Job Pods, while completions describes the number of successful completions sought. Two workers with four required completions does not mean all four Pods must start together. Dividing the actual work remains an application concern.',
-    practice: 'Read both values in parallel.yaml, then apply batch. Compare the initially active worker group with the total completion target. This lab demonstrates the declaration and first group, not a full queue or the detailed timing of successive worker replacements.'
+    how: "parallelism limits active workers; completions is the total success target. The prepared Job allows two workers and asks for four completions. Each logical tick finishes the already running batch and lets the controller create any next batch. This models the two separate counts without running real processes.",
+    practice: "Read parallel.yaml, then apply it and inspect the two active workers and four-completion target. You can experiment with two lab ticks to see the batches finish. Workers that cannot start must be repaired first; a missing image or dependency cannot be turned into success by advancing the teaching clock.",
   },
   92: {
     title: 'Do not retry forever',

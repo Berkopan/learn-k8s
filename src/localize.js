@@ -16,6 +16,7 @@ const caches = new Map();
 function goalHint(goal) {
   switch (goal?.type) {
     case 'event': return ' This step requires an observation; changing an object alone is not enough.';
+    case 'fileResource': return ` Edit and save ${goal.file}; both the file and live state are checked.`;
     case 'resource': return ` Verify the expected state on ${goal.kind}/${goal.name}.`;
     case 'absent': return ` Verify that ${goal.kind}/${goal.name} is no longer present.`;
     case 'count': return ` Check the resulting ${goal.kind} count.`;
@@ -38,7 +39,7 @@ export function localizedCurriculum(locale = getLanguage()) {
     syntax: index === 15 ? 'Observe → form a hypothesis → correct → verify' : module.syntax,
   }));
   const levels = sourceLevels.map(level => {
-    const translated = englishLessons[level.id];
+    const translated = englishLessons[level.legacyId ?? level.id];
     if (!translated || translated.steps.length !== level.steps.length) {
       throw new Error(`Incomplete English lesson ${level.id}`);
     }
@@ -47,9 +48,9 @@ export function localizedCurriculum(locale = getLanguage()) {
       difficulty: en(level.difficulty),
       steps: level.steps.map((step, index) => ({...step,
         text: translated.steps[index],
-        hint: level.id === 1 ? en(step.hint)
-          : `${translated.title} · Step ${index + 1}: ${en(commandClue(step.command))}${goalHint(step.goal)}`,
-        syntaxHint: en(syntaxClue(step.command)),
+        hint: translated.hints?.[index] || (level.legacyId === 1 ? en(step.hint)
+          : `${translated.title} · Step ${index + 1}: ${en(commandClue(step.command))}${goalHint(step.goal)}`),
+        syntaxHint: translated.syntaxHints?.[index] || en(syntaxClue(step.command)),
       })),
     };
   });
@@ -58,7 +59,9 @@ export function localizedCurriculum(locale = getLanguage()) {
   return result;
 }
 export function localizedGuide(id, locale = getLanguage()) {
-  return locale === 'en' ? englishLessons[id] : guides[id];
+  const level = typeof id === 'object' ? id : sourceLevels.find(item => typeof id === 'string' ? item.key === id : item.id === id);
+  const contentId = level?.legacyId ?? level?.id ?? id;
+  return locale === 'en' ? englishLessons[contentId] : guides[contentId];
 }
 export function localizedReference(locale = getLanguage()) {
   const english = locale === 'en';

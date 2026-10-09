@@ -3,6 +3,13 @@
 @import '@fontsource/vt323/latin-400.css';
 @import '@fontsource/vt323/latin-ext-400.css';
 
+/* The explanation and tasks share one tabbed card at tablet widths too. */
+@media(min-width:641px) and (max-width:980px){
+  .lesson-pane{display:block}
+  .personal-notes{margin-top:13px}
+  .lesson-pagination{margin-top:9px}
+}
+
 /* One bounded lesson card. Its tab bar never scrolls away with the explanation. */
 .lesson-card {
   min-width: 0;

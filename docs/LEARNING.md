@@ -1,0 +1,91 @@
+# Learning and assessment
+
+## Lesson identity
+
+Each `L` declaration has an explicit, immutable `key`, such as
+`manifests.declarative-scaling`. The sequential `id` remains the displayed lesson
+number. Do not generate keys from the current title or array position.
+
+`src/curriculum/legacy.js` records the **published v1 ID → key** mapping. Never
+regenerate that mapping when lessons are reordered. It allows the progress layer
+to migrate old records without assigning achievements or notes to another lesson.
+The original numeric `legacyId` also keeps existing lesson narratives and English
+translations attached to the same content after a reorder.
+
+New lessons need a new key. Keep an existing key when repairing or improving that
+lesson; changing its wording does not create a different learning identity.
+
+## Task evidence and completion
+
+`advanceSession(level, session, result)` is the single progression entry point.
+It accepts an engine command result and returns a progression patch; the UI owns
+the transcript, drafts, persistence and rewards. Error/help results cannot advance
+a task. Observations describe the latest successful command in the current task,
+so an old rollout check cannot satisfy a later post-change verification.
+
+Use semantic event fields rather than comparing command strings. HTTP goals match
+the destination Service, namespace, port, source when required, and success status.
+RBAC observations name the subject and namespace being checked. Equivalent
+`curl`/`wget` requests can therefore satisfy the same objective.
+
+The idempotence lesson explicitly marks its two-apply evidence with `scope:
+'lesson'`; this deliberate repeated-action count spans its two tasks. Other event
+goals must not opt into historical evidence merely to make a reference path pass.
+
+An incident's `completionGoal` describes the final state in addition to its last
+observation. It is not the union of every intermediate step: earlier transient
+states can intentionally disappear. Final checks run against a clone when the
+simulator would otherwise append a trace. Failed checks return localizable,
+structured feedback without awarding progress.
+
+Named Kubernetes resource observations also specify their namespace. Inspecting
+or restarting an identically named workload in another namespace does not verify
+the requested workload. Cluster-wide and general inventory observations retain
+their intended scope.
+
+Use `ENV(kind, name, container, match, namespace)` / `runtimeEnv` when an outcome
+requires an application to consume configuration. It checks the startup snapshot
+of that container in every ready Pod owned by that controller in that namespace,
+and requires at least one ready Pod. A correct ConfigMap or Secret alone cannot
+prove that an already running process received its new values. Replica and
+configuration-reference requirements remain separate explicit resource goals.
+
+Use `BACKENDS(service, kind, name, namespace)` / `serviceBackends` when traffic
+must reach a particular workload. There must be at least one selected ready Pod,
+and every selected ready Pod must belong to that controller in that namespace.
+This accepts equivalent label/selector designs while rejecting a Service pointed
+at the client itself, an unrelated workload, or a mixture of valid and unrelated
+backends. Combine it with `REACH` and the final HTTP observation: a synthetic 200
+alone cannot establish which application is serving the request.
+
+## Writing YAML
+
+Labs 27, 30 and 67 start with a definition the learner must edit and save: a Pod
+template label, the replica count, and a readiness path. Their goals check both a
+`fileResource` in the saved file and the live resource. Saving alone does not apply
+the file; an imperative live change alone does not repair the saved source.
+
+The `referenceFiles` field supplies the optional solution and test fixture.
+`applyReferenceEdits` is a pure helper for unit reference solvers, not automatic
+learner behavior. Browser replays use `applyReferenceFiles` to enter and save the
+same content through the real editor before running the reference command.
+
+## Independent incidents and predictions
+
+`createChallenge(kind, seed, locale)` returns a fresh level-shaped scenario for
+`traffic`, `release`, or `configuration`. The seed changes resource names and
+namespace deterministically. `sourceKey` links the attempt to its canonical
+lesson; `key` includes the challenge kind and seed so attempts stay separate. Seeds
+range from 0 to 2147483647. Reuse the seed to reproduce an
+attempt or restore it after a page reload.
+
+Render the challenge's own `guide`, not the original lesson guide: its initial
+text provides symptoms and acceptance criteria without the diagnosis. Hints and
+`solutionCommands` are optional. One semantic goal accepts equivalent repair
+orders and HTTP clients, but requires the intended source client and a working
+final state. Show the localized `debrief` only after completion.
+
+`predictionFor(levelOrKey, locale)` provides optional pre-run checks for Pod
+replacement, environment snapshots and readiness. They have no effect on task
+completion or XP. Their purpose is to compare an expected consequence with the
+state the learner observes after running the command.

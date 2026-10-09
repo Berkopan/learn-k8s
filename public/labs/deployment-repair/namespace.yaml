@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: learn-k8s-deployment-repair
+  labels:
+    app.kubernetes.io/part-of: learn-k8s
+    learn-k8s.io/lab: deployment-repair

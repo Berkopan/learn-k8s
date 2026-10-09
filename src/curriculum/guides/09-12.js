@@ -13,8 +13,8 @@ export default {
   },
   67: {
     why: 'Sağlık kontrolü yanlış kapıyı çalıyorsa sağlıklı uygulama bile hazır değil sanılabilir. Böyle bir durumda uygulamayı rastgele yeniden kurmak yerine kontrolün doğru yere baktığını doğrulamak gerekir. Bu görevde hatalı kontrol yolunu düzelteceğiz.',
-    how: 'Readiness probe uygulamanın gerçekten sunduğu bir endpoint’e bakmalıdır. Bu senaryoda /broken yanlıştır, hazır ready.yaml ise / yolunu kullanır. Deployment template’i güncellenince yeni Pod’lar doğru kontrolle değerlendirilir. Hazır örnekler normal Service hedeflerine katılır.',
-    practice: 'Doğru readiness tanımını uygula, ardından web Service’ine örnek istek gönder. Hazır replica sayısı ile erişim sonucunun birlikte düzelmesini gör. Gerçek uygulamada / yolunu her zaman sağlık endpoint’i sanma; burada nginx örneği için uygun olduğu bilinen bir yolu kullanıyorsun.'
+    how: "Readiness probe uygulamanın sunduğu bir endpoint’i kontrol etmelidir. Hem canlı Deployment hem ready.yaml burada yanlış /broken yolunu kullanır. Kaynak dosyada readinessProbe.httpGet.path alanını düzeltmek gerekir. Yeni template ile oluşan hazır Pod’lar Service’in normal trafik hedeflerine katılabilir.",
+    practice: "Dosyalar sekmesinde ready.yaml içindeki readiness yolunu / yapıp kaydet. Terminalden uygula ve web Service’ine örnek istek gönder. Dosya, hazır replica sayısı ve erişim sonucu birlikte doğrulanır. Burada / yalnız nginx örneği için uygundur; amaç kontrolü kaldırmak değil doğru adrese yöneltmektir.",
   },
   68: {
     why: 'Bazı uygulamalar çalışıyor görünse de kilitlenebilir; yeniden başlatmak onları toparlayabilir. Fakat yanlış sağlık kontrolü, sağlıklı süreci tekrar tekrar kapatarak yeni bir sorun da yaratabilir. Yeniden başlatma kararını trafik kabul etme kararından ayıracağız.',
@@ -136,8 +136,8 @@ export default {
   },
   91: {
     why: 'Dört kutuyu taşımak için iki kişi çalıştırabilirsin. Toplam yapılacak iş miktarı ile aynı anda çalışan kişi sayısı aynı değildir. Toplu görevlerde de bu iki sayıyı ayrı tanımlamak kaynak kullanımını anlamanı sağlar.',
-    how: 'Job içindeki parallelism aynı anda çalışabilecek Pod sayısını, completions ise hedeflenen başarılı tamamlanma sayısını belirtir. İki paralel işçiyle dört tamamlanma istemek, bir anda dört Pod açmak demek değildir. Gerçek işin parçalarının nasıl paylaşılacağı ayrıca uygulama tasarımıdır.',
-    practice: 'parallel.yaml içindeki iki alanı oku ve batch Job’unu uygula. Başlangıçtaki aktif işçi grubunu, toplam hedefle karıştırma. Görev tanımı ve ilk grubu gösterir; eğitim motoru gerçek bir iş kuyruğunu veya ayrıntılı tamamlanma zamanlamasını çalıştırmaz.'
+    how: "parallelism aynı anda etkin işçi sayısını, completions toplam başarı hedefini belirtir. Burada iki işçiyle dört tamamlanma istenir. Bir lab tick yalnız o anda çalışan grubu bitirir; controller sonraki grubu oluşturur. Böylece iki sayı arasındaki fark görünür kalır ve gerçek süreç çalıştırılmadan küçük bir iş sırası modellenir.",
+    practice: "parallel.yaml içindeki iki alanı karşılaştırıp dosyayı uygula. İki aktif işçinin dört başarı hedefini aynı anda bitirmediğini gör. İstersen iki lab tick ile grupları sırayla tamamlat. Image veya bağımlılık yüzünden başlayamayan işçi başarı sayılmaz; önce arızalı tanımı düzeltmek gerekir.",
   },
   92: {
     why: 'Başarısız işi sonsuza kadar denemek kaynak ve zaman harcayabilir. Öte yandan belirli sayıda yeniden deneme ile toplam çalışma süresine sınır koymak farklı sorunları çözer. Bu iki güvenlik sınırını ayrı tanımlayacağız.',

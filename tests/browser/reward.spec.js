@@ -6,7 +6,7 @@ import {quizzes} from '../../src/reference.js';
 // Video changes worker configuration, so Playwright requires file-level scope.
 test.use({video: 'on'});
 test.setTimeout(25000);
-const progressKey = 'learn-k8s:progress:v1';
+const progressKey = 'learn-k8s:progress:v2';
 async function openLab(page, {id = 1, reduced = false, systemReduced = false, theme = 'dark', clock = false} = {}) {
   await page.emulateMedia({reducedMotion: systemReduced ? 'reduce' : 'no-preference'});
   if (clock) await page.clock.install({time: new Date('2026-10-01T20:00:00Z')});
@@ -35,7 +35,7 @@ const record = page => page.evaluate(key => JSON.parse(localStorage.getItem(key)
 test('completion is saved immediately; the reward waits 900ms without auto-advancing', async ({page}) => {
   await openLab(page, {clock: true});
   await finish(page);
-  expect(Object.keys((await record(page)).completed)).toEqual(['1']);
+  expect(Object.keys((await record(page)).completed)).toEqual([levels[0].key]);
   await expect(page.locator('.terminal-entry').last()).toContainText('nginx');
   await expect(page.locator('.reward-dialog')).toHaveCount(0);
   await expect(page.locator('.pixel-confetti')).toHaveCount(0);
@@ -66,7 +66,7 @@ test('completion is saved immediately; the reward waits 900ms without auto-advan
   await command(page, 'docker images');
   await page.clock.runFor(5000);
   await expect(dialog).toHaveCount(0);
-  expect(Object.keys((await record(page)).completed)).toEqual(['1']);
+  expect(Object.keys((await record(page)).completed)).toEqual([levels[0].key]);
 });
 
 test('using the inline next-level action cancels a pending reward', async ({page}) => {
@@ -118,7 +118,7 @@ test('restart cancels a pending reveal; replay does not grant duplicate XP', asy
   await finish(page);
   await page.clock.runFor(900);
   await expect(page.locator('.reward-meta strong')).toHaveText('Tekrar tamamlandı');
-  expect(Object.keys((await record(page)).completed)).toEqual(['1']);
+  expect(Object.keys((await record(page)).completed)).toEqual([levels[0].key]);
   await page.keyboard.press('Escape');
   await expect(page.locator('.pixel-confetti')).toHaveCount(0);
 });
@@ -158,7 +158,7 @@ test('reload during the delay retains completion without restoring the pending c
   await expect(page.locator('.completed-label')).toBeVisible();
   await page.clock.runFor(5000);
   await expect(page.locator('.reward-dialog')).toHaveCount(0);
-  expect(Object.keys((await record(page)).completed)).toEqual(['1']);
+  expect(Object.keys((await record(page)).completed)).toEqual([levels[0].key]);
 });
 
 test('320px final reward keeps the optional quiz and the journey action reachable', async ({page}, info) => {

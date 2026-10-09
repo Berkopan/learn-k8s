@@ -1,0 +1,102 @@
+name: Real cluster labs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-cluster-labs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kind-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # Release binary digest and matching node image are published by kind:
+      # https://api.github.com/repos/kubernetes-sigs/kind/releases/tags/v0.31.0
+      KIND_VERSION: v0.31.0
+      KIND_SHA256: eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa
+      KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+      KUBECTL_VERSION: v1.35.0
+      KIND_EXPERIMENTAL_PROVIDER: docker
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Set the isolated kubeconfig path
+        # The runner context is unavailable in jobs.<job_id>.env.
+        # https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability
+        run: |
+          printf 'KUBECONFIG=%s/learn-k8s-kubeconfig\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Check out the tested revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned kind and kubectl
+        run: |
+          lab_bin="$RUNNER_TEMP/learn-k8s-bin"
+          mkdir -p "$lab_bin" "$RUNNER_TEMP/learn-k8s-smoke-evidence"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/kubernetes-sigs/kind/releases/download/$KIND_VERSION/kind-linux-amd64" \
+            --output "$lab_bin/kind"
+          printf '%s  %s\n' "$KIND_SHA256" "$lab_bin/kind" | sha256sum --check --strict
+          # Use the versioned binary/checksum procedure in the upstream docs:
+          # https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl" \
+            --output "$lab_bin/kubectl"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl.sha256" \
+            --output "$lab_bin/kubectl.sha256"
+          printf '%s  %s\n' "$(cat "$lab_bin/kubectl.sha256")" "$lab_bin/kubectl" | sha256sum --check --strict
+          chmod +x "$lab_bin/kind" "$lab_bin/kubectl"
+          printf '%s\n' "$lab_bin" >> "$GITHUB_PATH"
+      - name: Create an isolated Kubernetes cluster
+        run: |
+          kind version
+          kubectl version --client
+          kind create cluster --name learn-k8s-ci --image "$KIND_NODE_IMAGE" \
+            --kubeconfig "$KUBECONFIG" --wait 120s
+          kubectl wait --for=condition=Ready node --all --timeout=120s
+          kubectl -n kube-system rollout status deployment/coredns --timeout=120s
+          # Non-latest lab tags default to IfNotPresent, so preloaded images work.
+          # https://kind.sigs.k8s.io/docs/user/quick-start/#loading-an-image-into-your-cluster
+          docker pull nginx:1.27
+          docker pull busybox:1.37
+          kind load docker-image --name learn-k8s-ci nginx:1.27 busybox:1.37
+      - name: Exercise downloaded lab lifecycles
+        timeout-minutes: 12
+        run: |
+          bash scripts/smoke-real-labs.sh | tee "$RUNNER_TEMP/learn-k8s-smoke-evidence/smoke.log"
+      - name: Collect failure diagnostics
+        if: failure()
+        timeout-minutes: 2
+        run: |
+          evidence="$RUNNER_TEMP/learn-k8s-smoke-evidence"
+          mkdir -p "$evidence"
+          if [ -f "$KUBECONFIG" ]; then
+            kubectl get pods,deployments,services,endpointslices,configmaps -A -o yaml > "$evidence/resources.yaml" 2>&1 || true
+            kubectl get events -A --sort-by=.metadata.creationTimestamp > "$evidence/events.txt" 2>&1 || true
+            kubectl describe pods -A > "$evidence/pods.txt" 2>&1 || true
+          fi
+          kind export logs "$evidence/kind" --name learn-k8s-ci || true
+      - name: Delete the runner's test cluster
+        if: always()
+        run: |
+          if command -v kind >/dev/null 2>&1; then
+            kind delete cluster --name learn-k8s-ci
+          fi
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: real-cluster-lab-evidence
+          path: ${{ runner.temp }}/learn-k8s-smoke-evidence/
+          if-no-files-found: ignore
+          retention-days: 14

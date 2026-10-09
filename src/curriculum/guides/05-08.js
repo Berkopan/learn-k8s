@@ -95,8 +95,8 @@ export default {
   },
   51: {
     why: 'Ayarı ayrı bir yerde sakladın; şimdi uygulamanın onu nereden okuyacağını belirtmen gerekiyor. Bir adres defterindeki kaydı kullanacak kişiye o kaydı göstermek gibi, veri ile tüketici arasında bağlantı kurulmalıdır.',
-    how: '`envFrom`, ConfigMap anahtarlarını container ortam değişkenlerine aktarabilen bir referanstır. Deployment’ın Pod template’ine bu bağlantıyı eklemek yeni Pod’lar üreten bir rollout başlatır. Yeni süreçler ayarları başlangıçta alır. Var olan sürecin ortamı ConfigMap değişince kendiliğinden güncellenmez.',
-    practice: 'Hazır settings ConfigMap’ini web Deployment’ının ortamına bağla. Template içindeki referansı ve yeni örneklerin oluşmasını gözlemle. Image değişmeden uygulamaya başka bir bilgi kaynağı ekledin. Burada asıl fikir, paketi değiştirmek ile sürecin başlangıç ayarlarını değiştirmeyi ayırmaktır.'
+    how: "kubectl set env --from=configmap/settings, ConfigMap’te o anda bulunan anahtarlar için env listesine ayrı valueFrom.configMapKeyRef girdileri ekler. MODE girdisi settings içindeki MODE anahtarını referans eder. Bu işlem envFrom alanını oluşturmaz; envFrom, manifestte bütün kaynağı tüketmek için kullanılan ayrı bir tanımdır.",
+    practice: "settings kaynağını web ortamına ekle ve yeni template’in env listesindeki MODE referansını incele. Yeni süreçler değeri başlarken alır; ConfigMap değişikliği mevcut env değerini canlı güncellemez. Sonradan yeni anahtar eklersen, set env komutunun daha önce ürettiği anahtar listesi kendiliğinden genişlemez.",
   },
   52: {
     why: 'Bazen tek bir küçük ayarı değiştirmek için ayrı yapılandırma nesnesi oluşturmak gerekmeyebilir. Örneğin teşhis sırasında log ayrıntısını artırmak isteyebilirsin. Bu ayarın uygulama paketinden ayrı tutulduğunu ve yeni süreçlere nasıl geçtiğini göreceğiz.',

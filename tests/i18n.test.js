@@ -1,3 +1,4 @@
+import {advanceSession,applyReferenceEdits} from '../src/learning.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {levels as original, modules} from '../src/curriculum.js';
@@ -81,7 +82,7 @@ for (const source of original) {
     for (const key of ['id','module','xp','minutes','source']) assert.equal(level[key], source[key]);
     for (const key of ['seed','files','state']) assert.equal(level[key], source[key], `${key} must not be replaced`);
     assert.equal(level.steps.length, source.steps.length);
-    let state = createLab(level);
+    let state = createLab(level), session = {done:0};
     level.steps.forEach((step, i) => {
       assert.equal(step.command, source.steps[i].command);
       assert.equal(step.goal, source.steps[i].goal);
@@ -90,9 +91,11 @@ for (const source of original) {
       assert.doesNotMatch(step.syntaxHint, /undefined/);
       const clue = commandClue(step.command);
       assert.notEqual(translate(clue, [], 'en'), clue, `Missing hint translation: ${clue}`);
+      state = applyReferenceEdits(state, step);
       const result = run(state, step.command);
       assert.equal(result.error, false, `${step.command}: ${result.output}`);
-      assert.equal(goalMet(result.state, step.goal), true, `${step.command}: goal failed`);
+      session = {...session,...advanceSession(level,session,result)};
+      assert.equal(session.done, i + 1, `${step.command}: ${JSON.stringify(session.feedback)}`);
       state = result.state;
       noTurkish(terminalOutput({output:result.output,event:result.event,error:result.error}, 'en'));
       state.trace.forEach(event => noTurkish(runtimeText(event.text, 'en')));
