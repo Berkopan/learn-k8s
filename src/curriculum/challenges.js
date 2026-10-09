@@ -1,5 +1,5 @@
 import {levelsByKey, LEGACY_ID_TO_KEY} from '../curriculum.js';
-import {ALL, R, ENV, HTTP, REACH, deployment, service, pod, container, patch, res} from './core.js';
+import {ALL, R, ENV, BACKENDS, HTTP, REACH, deployment, service, pod, container, patch, res} from './core.js';
 
 export const challengeKinds = Object.freeze([
   Object.freeze({kind: 'traffic', sourceKey: LEGACY_ID_TO_KEY[122], title: 'Erişim kesintisi'}),
@@ -123,6 +123,7 @@ export function createChallenge(kind, seed = 1, locale = 'tr') {
       : 'Pod template’inin referans ettiği ConfigMap ve Secret yoktu. İki bağımlılığı doğru isimlerle oluşturmak, yapılandırma gereksinimlerini kaldırmadan container’ları başlattı. Son istek hizmeti de doğruladı.';
   }
 
+  completionGoal = {...completionGoal, goals: [...completionGoal.goals, BACKENDS(app, 'Deployment', app, namespace)]};
   return {
     ...source,
     id: source.id, sourceId: source.id, sourceKey: source.key,

@@ -50,6 +50,14 @@ and requires at least one ready Pod. A correct ConfigMap or Secret alone cannot
 prove that an already running process received its new values. Replica and
 configuration-reference requirements remain separate explicit resource goals.
 
+Use `BACKENDS(service, kind, name, namespace)` / `serviceBackends` when traffic
+must reach a particular workload. There must be at least one selected ready Pod,
+and every selected ready Pod must belong to that controller in that namespace.
+This accepts equivalent label/selector designs while rejecting a Service pointed
+at the client itself, an unrelated workload, or a mixture of valid and unrelated
+backends. Combine it with `REACH` and the final HTTP observation: a synthetic 200
+alone cannot establish which application is serving the request.
+
 ## Writing YAML
 
 Labs 27, 30 and 67 start with a definition the learner must edit and save: a Pod

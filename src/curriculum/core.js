@@ -27,6 +27,7 @@ export const REACH=(service,port=80,source,namespace='default',allowed=true)=>({
 export const PERMISSION=(verb,resource,allowed,identity='system:serviceaccount:default:reader',namespace='default')=>({type:'permission',verb,resource,allowed,identity,namespace});
 export const R=(kind,name,match={},namespace='default')=>({type:'resource',kind,name,match,namespace});
 export const ENV=(kind,name,container,match,namespace='default')=>({type:'runtimeEnv',kind,name,container,match,namespace});
+export const BACKENDS=(service,kind,name,namespace='default')=>({type:'serviceBackends',service,kind,name,namespace});
 export const F=(file,kind,name,match={},namespace='default')=>({type:'fileResource',file,kind,name,match,namespace});
 export const N=(kind,name,namespace='default')=>({type:'absent',kind,name,namespace});
 export const C=(kind,count,match={})=>({type:'count',kind,count,match});

@@ -8,6 +8,7 @@ export default {
   '{0}/{1}, {2} namespace’inde henüz istenen durumda değil.': '{0}/{1} is not yet in the expected state in namespace {2}.',
   '{0}/{1}, {2} namespace’inde bulunamadı.': '{0}/{1} was not found in namespace {2}.',
   '{0}/{1}, {2} namespace’inde hazır Pod’lara sahip olmalı; her {3} container’ının çalışan ortamında {4} değerleri hedefle eşleşmeli. Ayar değiştiyse yeni süreç başlat.': '{0}/{1} must have ready Pods in namespace {2}; every running {3} container must have the expected {4} environment values. Start new processes after changing configuration.',
+  'Service/{0}, {1} namespace’inde en az bir hazır hedefe yönelmeli; seçtiği bütün hazır Pod’lar {2}/{3} tarafından yönetilmeli.': 'Service/{0} must have at least one ready backend in namespace {1}; every selected ready Pod must belong to {2}/{3}.',
   '{0} dosyasını düzenleyip kaydet: {1}/{2} tanımı henüz hedefle eşleşmiyor.': 'Edit and save {0}: its {1}/{2} definition does not yet match the target.',
   '{0}/{1} hâlâ mevcut.': '{0}/{1} is still present.',
   'Eşleşen {0} sayısı {1}; hedef {2}.': 'Matching {0} count: {1}; expected: {2}.',

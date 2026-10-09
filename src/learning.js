@@ -78,6 +78,18 @@ export function evaluateTask(state, goal, {events = [], lessonEvents = events} =
           current.kind, current.name, ns, current.container, Object.keys(current.match || {}).join(', '));
         break;
       }
+      case 'serviceBackends': {
+        const service = find(state, 'Service', current.service, ns);
+        const workload = find(state, current.kind, current.name, ns);
+        const selector = service?.spec?.selector;
+        const readyBackends = selector ? objects(state, 'Pod', ns).filter(pod => pod.status?.ready === true
+          && matchesLearningGoal(pod.metadata.labels || {}, selector)) : [];
+        met = !!workload && readyBackends.length > 0
+          && readyBackends.every(pod => pod._sim?.owner === `${current.kind}/${current.name}`);
+        failure = missing('service-backends', 'Service/{0}, {1} namespace’inde en az bir hazır hedefe yönelmeli; seçtiği bütün hazır Pod’lar {2}/{3} tarafından yönetilmeli.',
+          current.service, ns, current.kind, current.name);
+        break;
+      }
       case 'fileResource': {
         const resource = fileDocuments(state, current.file).find(item => item?.kind === current.kind
           && item.metadata?.name === current.name && (item.metadata?.namespace || 'default') === ns);
