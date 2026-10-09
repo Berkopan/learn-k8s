@@ -2,10 +2,14 @@ import ui from './locales/en/ui.js';
 import engine from './locales/en/engine.js';
 import hints from './locales/en/hints.js';
 import extra from './locales/en/extra.js';
+import learningImprovements from './locales/en/learning-improvements.js';
+import workbenchImprovements from './locales/en/workbench-improvements.js';
+import practiceImprovements from './locales/en/practice-improvements.js';
+import engineImprovements from './locales/en/engine-improvements.js';
 
 export const LANGUAGE_KEY = 'learn-k8s:language:v1';
 export const SUPPORTED_LANGUAGES = Object.freeze(['tr', 'en']);
-export const englishMessages = Object.freeze({...ui, ...engine, ...hints, ...extra});
+export const englishMessages = Object.freeze({...ui, ...engine, ...hints, ...extra, ...engineImprovements, ...learningImprovements, ...workbenchImprovements, ...practiceImprovements});
 // Node-based model tests retain the source language. The browser initializes
 // its saved/navigator preference before React mounts.
 let language = 'tr';

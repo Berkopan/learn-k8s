@@ -1,10 +1,11 @@
 import diagnostics from './locales/en/engine.js';
 import extra from './locales/en/extra.js';
+import engineImprovements from './locales/en/engine-improvements.js';
 import {getLanguage, translate} from './i18n.js';
 import {helpText} from './command-help.js';
 
 // Translate only recognized model prose, never arbitrary DOM nodes or data values.
-const messages = {...diagnostics, ...extra};
+const messages = {...diagnostics, ...extra, ...engineImprovements};
 const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const templates = Object.keys(messages).filter(key => /\{\d+\}/.test(key)).map(key => {
   const indices = [];
