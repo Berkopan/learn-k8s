@@ -130,30 +130,86 @@ function put(s,source,{create=false}={}) {
   pushTrace(s,'API server',`${r.kind}/${r.metadata.name} ${existing?'güncellendi':'kaydedildi'}.`);
   return r;
 }
-function environment(s,p){const out={};for(const c of p.spec.containers||[]){for(const ref of c.envFrom||[]){const k=ref.configMapRef?'ConfigMap':'Secret',r=find(s,k,ref.configMapRef?.name||ref.secretRef?.name,p.metadata.namespace);if(!r)return null;Object.assign(out,k==='Secret'?Object.fromEntries(Object.entries(r.data||{}).map(([key,value])=>[key,decode(value)])):r.data||{});}for(const item of c.env||[])out[item.name]=item.value??(item.valueFrom?.fieldRef?.fieldPath==='metadata.name'?p.metadata.name:'[valueFrom]');}return out;}
+function environment(s,p){
+  const snapshots={};
+  for(const c of p.spec.containers||[]){
+    const out={};
+    for(const source of c.envFrom||[]){
+      const kind=source.configMapRef?'ConfigMap':'Secret',ref=source.configMapRef||source.secretRef;
+      const resource=ref&&find(s,kind,ref.name,p.metadata.namespace);
+      if(!resource){if(ref?.optional)continue;return null;}
+      for(const [key,value] of Object.entries(resource.data||{}))out[`${source.prefix||''}${key}`]=kind==='Secret'?decode(value):value;
+    }
+    for(const item of c.env||[]){
+      if(item.value!==undefined){out[item.name]=String(item.value);continue;}
+      const from=item.valueFrom;
+      if(!from){out[item.name]='';continue;}
+      if(from?.fieldRef?.fieldPath==='metadata.name'){out[item.name]=p.metadata.name;continue;}
+      const kind=from?.configMapKeyRef?'ConfigMap':from?.secretKeyRef?'Secret':null;
+      const ref=from?.configMapKeyRef||from?.secretKeyRef;
+      const resource=kind&&find(s,kind,ref.name,p.metadata.namespace);
+      if(!resource||!Object.hasOwn(resource.data||{},ref.key)){if(ref?.optional)continue;return null;}
+      out[item.name]=kind==='Secret'?decode(resource.data[ref.key]):resource.data[ref.key];
+    }
+    snapshots[c.name]=out;
+  }
+  return snapshots;
+}
+const requestedResources=p=>(p.spec.containers||[]).reduce((sum,c)=>({
+  cpu:sum.cpu+quantity(c.resources?.requests?.cpu,true),
+  memory:sum.memory+quantity(c.resources?.requests?.memory)
+}),{cpu:0,memory:0});
+const occupiesNode=p=>!['Succeeded','Failed'].includes(p.status?.phase);
+/** Pure scheduler explanations shared by placement and the optional inspector. */
+export function schedulingChecks(s,p){
+  const requested=requestedResources(p);
+  return objects(s,'Node').map(n=>{
+    const occupants=objects(s,'Pod').filter(q=>q!==p&&q.spec.nodeName===n.metadata.name&&occupiesNode(q));
+    const used=occupants.reduce((sum,q)=>{const r=requestedResources(q);return {cpu:sum.cpu+r.cpu,memory:sum.memory+r.memory};},{cpu:0,memory:0});
+    const available={cpu:Math.max(0,2000-used.cpu),memory:Math.max(0,2048-used.memory)};
+    const unschedulable=!!n.spec.unschedulable;
+    const selectorMatches=matches(n.metadata.labels,p.spec.nodeSelector||{});
+    const toleratesTaints=(n.spec.taints||[]).every(t=>t.effect==='PreferNoSchedule'||(p.spec.tolerations||[]).some(x=>x.key===t.key&&(x.operator==='Exists'||x.value===t.value)&&(!x.effect||x.effect===t.effect)));
+    const fitsResources=requested.cpu<=available.cpu&&requested.memory<=available.memory;
+    return {node:n.metadata.name,unschedulable,selectorMatches,toleratesTaints,requested:{...requested},available,fitsResources,eligible:!unschedulable&&selectorMatches&&toleratesTaints&&fitsResources,podCount:occupants.length};
+  });
+}
 function podStatus(s,p) {
   p._sim ||= {};
   const containers=p.spec.containers||[];
-  const requests=containers.reduce((a,c)=>({cpu:a.cpu+quantity(c.resources?.requests?.cpu,true),memory:a.memory+quantity(c.resources?.requests?.memory)}),{cpu:0,memory:0});
+  const images=JSON.stringify(containers.map(c=>[c.name,c.image]));
+  if(p._sim.images!==undefined&&p._sim.images!==images){delete p._sim.envSnapshot;delete p._sim.environments;}
+  p._sim.images=images;
+  const livenessBroken=containers.some(c=>c.livenessProbe?.httpGet?.path==='/broken');
+  if(livenessBroken&&p._sim.livenessTick!==undefined&&p._sim.livenessTick<s.ticks){
+    delete p._sim.envSnapshot;delete p._sim.environments;
+    p._sim.livenessTick=s.ticks;
+  }
   let reason='Running',ready=true;
-  if(!p.spec.nodeName){const nodes=objects(s,'Node').filter(n=>!n.spec.unschedulable&&matches(n.metadata.labels,p.spec.nodeSelector||{})&&(n.spec.taints||[]).every(t=>t.effect==='PreferNoSchedule'||(p.spec.tolerations||[]).some(x=>x.key===t.key&&(x.operator==='Exists'||x.value===t.value)&&(!x.effect||x.effect===t.effect))));
-    nodes.sort((a,b)=>objects(s,'Pod').filter(q=>q.spec.nodeName===a.metadata.name&&q.status?.phase!=='Succeeded').length-objects(s,'Pod').filter(q=>q.spec.nodeName===b.metadata.name&&q.status?.phase!=='Succeeded').length);
-    const target=nodes.find(n=>{const used=objects(s,'Pod').filter(q=>q!==p&&q.spec.nodeName===n.metadata.name&&q.status?.phase!=='Succeeded').reduce((a,q)=>{for(const c of q.spec.containers||[]){a.cpu+=quantity(c.resources?.requests?.cpu,true);a.memory+=quantity(c.resources?.requests?.memory);}return a;},{cpu:0,memory:0});return used.cpu+requests.cpu<=2000&&used.memory+requests.memory<=2048;});
-    if(target){p.spec.nodeName=target.metadata.name;pushTrace(s,'Scheduler',`${p.metadata.name} → ${target.metadata.name}`);}else{reason='Pending';ready=false;p._sim.message='FailedScheduling: uygun node yok; request, nodeSelector, taint ve cordon durumunu kontrol et.';}
+  if(!p.spec.nodeName){
+    const target=schedulingChecks(s,p).filter(n=>n.eligible).sort((a,b)=>a.podCount-b.podCount)[0];
+    if(target){p.spec.nodeName=target.node;pushTrace(s,'Scheduler',`${p.metadata.name} → ${target.node}`);}else{reason='Pending';ready=false;p._sim.message='FailedScheduling: uygun node yok; request, nodeSelector, taint ve cordon durumunu kontrol et.';}
   }
   if(reason==='Running'){
     if(containers.some(c=>/missing|nonexistent|bad-tag/.test(c.image))){reason='ImagePullBackOff';ready=false;p._sim.message='Failed to pull image: etiketi veya registry erişimini kontrol et.';}
-    else if(environment(s,p)===null){reason='CreateContainerConfigError';ready=false;p._sim.message='Bulunamayan ConfigMap veya Secret referansı.';}
+    else if(!Object.hasOwn(p._sim,'envSnapshot')&&environment(s,p)===null){reason='CreateContainerConfigError';ready=false;p._sim.message='Gerekli ConfigMap veya Secret kaynağı ya da anahtarı bulunamadı.';}
     else if((p.spec.volumes||[]).some(v=>v.persistentVolumeClaim&&find(s,'PersistentVolumeClaim',v.persistentVolumeClaim.claimName,p.metadata.namespace)?.status?.phase!=='Bound')){reason='Pending';ready=false;p._sim.message='PersistentVolumeClaim henüz Bound değil.';}
     else if(p.spec.initContainers?.length&&!p._sim.initDone){reason=`Init:0/${p.spec.initContainers.length}`;ready=false;p._sim.message='Init container çalışıyor. lab tick ile bir simülasyon adımı ilerlet.';}
     else if(p._sim.failure){reason=p._sim.failure;ready=false;}
-    else if(containers.some(c=>c.livenessProbe?.httpGet?.path==='/broken')){reason='CrashLoopBackOff';ready=false;p._sim.restarts=Math.max(p._sim.restarts||0,1+s.ticks);p._sim.message='Liveness HTTP /broken yanıtı 404; kubelet container yeniden başlatıyor.';}
+    else if(livenessBroken){reason='CrashLoopBackOff';ready=false;p._sim.restarts=Math.max(p._sim.restarts||0,1+s.ticks);p._sim.livenessTick=s.ticks;p._sim.message='Liveness HTTP /broken yanıtı 404; kubelet container yeniden başlatıyor.';}
     else if(containers.some(c=>c.readinessProbe?.httpGet?.path==='/broken')){ready=false;p._sim.message='Readiness başarısız: Running, fakat Service endpoint listesinde değil.';}
     else if(p._sim.complete){reason='Succeeded';ready=false;}
     else{p._sim.message='Container çalışıyor; readiness koşulu başarılı.';}
   }
-  if(!p._sim.envSnapshot&&environment(s,p)!==null)p._sim.envSnapshot=environment(s,p);
-  p.status={phase:['ImagePullBackOff','CreateContainerConfigError','CrashLoopBackOff'].includes(reason)?'Running':reason.startsWith('Init:')?'Pending':reason,reason,ready,restarts:p._sim.restarts||0,podIP:p.spec.nodeName?`10.244.${p.spec.nodeName.endsWith('2')?2:1}.${(p._sim.id||1)%240+10}`:'<none>'};
+  const starts=['Running','CrashLoopBackOff','Succeeded'].includes(reason);
+  if(starts&&!Object.hasOwn(p._sim,'envSnapshot')){
+    p._sim.environments=environment(s,p)||{};
+    p._sim.envSnapshot=p._sim.environments[containers[0]?.name]||{};
+    p._sim.everStarted=true;
+  }
+  const waiting=['ImagePullBackOff','CreateContainerConfigError'].includes(reason)||reason.startsWith('Init:');
+  const phase=waiting?(p._sim.everStarted?'Running':'Pending'):reason==='CrashLoopBackOff'?'Running':reason;
+  p.status={phase,reason,ready,restarts:p._sim.restarts||0,podIP:p.spec.nodeName?`10.244.${p.spec.nodeName.endsWith('2')?2:1}.${(p._sim.id||1)%240+10}`:'<none>'};
 }
 function reconcile(s) {
   // Claims bind only when the selected class exists; the training cluster has a mock CSI provisioner.

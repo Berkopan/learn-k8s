@@ -115,7 +115,22 @@ function execute(s,q){
   else if(verb==='set'){
     const sub=a.shift(),{kind,name}=resourceArgs(a),r=ensure(s,kind,name,ns),spec=templateOf(r);if(!spec)throw new Error('Pod template bulunamadı.');event={...event,action:`set ${sub}`,kind,name};const pairs=a.slice(a[0].includes('/')?1:2);
     if(sub==='image'){for(const pair of pairs){const [cname,...parts]=pair.split('='),image=parts.join('=');if(!image)throw new Error('CONTAINER=IMAGE gerekli.');const targets=spec.containers.filter(c=>cname==='*'||c.name===cname);if(!targets.length)throw new Error(`Container adı bulunamadı: ${cname}`);targets.forEach(c=>c.image=image);}out=`${kind}/${name} image updated`;}
-    else if(sub==='env'){for(const c of spec.containers){c.env||=[];if(f.from){const [type,resourceName]=String(f.from).split('/');const k=kindOf(type);ensure(s,k,resourceName,ns);c.envFrom=[{[k==='Secret'?'secretRef':'configMapRef']:{name:resourceName}}];}for(const pair of pairs){const [key,...rest]=pair.split('=');if(!rest.length)throw new Error('KEY=VALUE gerekli.');c.env=c.env.filter(e=>e.name!==key);c.env.push({name:key,value:rest.join('=')});}}out=`${kind}/${name} environment updated`;}
+    else if(sub==='env'){
+      const updates=[];
+      if(f.from){
+        const [type,resourceName]=String(f.from).split('/'),sourceKind=kindOf(type);
+        if(!['ConfigMap','Secret'].includes(sourceKind))throw new Error('--from yalnız configmap/NAME veya secret/NAME kabul eder.');
+        const source=ensure(s,sourceKind,resourceName,ns),ref=sourceKind==='Secret'?'secretKeyRef':'configMapKeyRef';
+        for(const key of Object.keys(source.data||{}).sort())updates.push({name:key.replace(/[^a-zA-Z0-9_]/g,'_').toUpperCase(),valueFrom:{[ref]:{name:resourceName,key}}});
+      }
+      for(const pair of pairs){const [key,...rest]=pair.split('=');if(!key||!rest.length)throw new Error('KEY=VALUE gerekli.');updates.push({name:key,value:rest.join('=')});}
+      if(!updates.length)throw new Error('En az bir ortam değişkeni gerekli.');
+      for(const c of spec.containers){
+        c.env||=[];
+        for(const update of updates){c.env=c.env.filter(e=>e.name!==update.name);c.env.push(copy(update));}
+      }
+      out=`${kind}/${name} environment updated`;
+    }
     else if(sub==='resources'){for(const c of spec.containers){c.resources||={};for(const field of ['requests','limits'])if(f[field])c.resources[field]=Object.fromEntries(String(f[field]).split(',').map(x=>{const i=x.indexOf('=');if(i<1)throw new Error('cpu=100m,memory=64Mi gibi kaynak çiftleri gerekli.');return [x.slice(0,i),x.slice(i+1)];}));}validate(s,r);out=`${kind}/${name} resources updated`;}
     else throw new Error('Desteklenmeyen set komutu.');
   }

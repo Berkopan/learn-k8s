@@ -6,14 +6,14 @@ This is a teaching model, not a conformant Kubernetes implementation. Every comm
 |---|---|---|
 | Discovery | get/describe, selected explain fields, aliases, namespace, labels, YAML/JSON/wide | Synthetic server, nodes and events; `get all` is only a conventional subset |
 | Docker | pull, images, run, ps, tag, logs, inspect, stop, rm | No layers, filesystem, process, registry network or image signature verification |
-| Pod | scheduling, image/config/PVC failures, simplified probes and init | Known teaching image-name patterns represent pull failure; no arbitrary application execution |
+| Pod | scheduling, image/config/PVC failures, startup environment snapshots, simplified probes and init | Known teaching image-name patterns represent pull failure; never-started image/config failures remain Pending; no arbitrary application execution |
 | Deployment | desired replicas, replacement, revision history, image update, undo | New replacement set is created at once; maxSurge/maxUnavailable and rollout timing are not implemented |
 | StatefulSet | stable ordinals and replica changes | No OrderedReady behavior, partitioned updates or volumeClaimTemplates controller |
 | DaemonSet | one example Pod per teaching worker | No real node admission or complete eligibility behavior |
-| Scheduling | two 2 CPU / 2 GiB nodes, requests, balanced placement, nodeSelector, NoSchedule taints/tolerations, cordon | Not the real scheduler score framework; no affinity, preemption or NoExecute eviction |
+| Scheduling | two 2 CPU / 2 GiB nodes, requests, balanced placement, nodeSelector, NoSchedule taints/tolerations, cordon; pure `schedulingChecks` explains the same checks used for placement | Not the real scheduler score framework; no affinity, preemption or NoExecute eviction |
 | Resources | CPU/memory quantities, request≤limit checks, numeric Pod quota | CPU throttling, OOM, LimitRange admission, memory pressure and quota scope selectors are not simulated |
 | Service | label selection, ready EndpointSlices, cluster DNS names, targetPort check, local forward | No sockets or real iptables/IPVS/eBPF; example containers are assumed to listen on their declared teaching port |
-| ConfigMap / Secret | creation, envFrom, base64 storage, decoded environment snapshot, rollout refresh | No projected-volume refresh; no encryption, credentials or API tokens |
+| ConfigMap / Secret | creation, envFrom, individual configMapKeyRef/secretKeyRef, base64 storage, per-container environment snapshots, rollout refresh | No projected-volume refresh; no encryption, credentials or API tokens; exec uses the first container |
 | Storage | PVC/class match, mock provisioning, PV binding and Retain/Released state, Pod PVC dependency | No disks or stored file content, resizing, actual CSI, reclaim deletion, topology or WaitForFirstConsumer |
 | RBAC | namespaced Role/RoleBinding, ServiceAccount subjects, can-i; --as for get/describe/delete | No full authentication, groups, ClusterRole aggregation, API groups, resourceNames or subresource rules |
 | Job / CronJob | finite job template, active workers, completion, schedule/policy declarations, manual Job from CronJob | lab tick completes the teaching job; no cron clock, retry/backoff engine, deadline scheduler or exact-once guarantee |
@@ -34,5 +34,7 @@ The educational maximum is 12 replicas, not a Kubernetes maximum. A level can ha
 `lab load N` changes a synthetic metric. `lab tick` advances modeled init/Job/HPA behavior, not wall-clock time. `lab request SERVICE` demonstrates one in-cluster HTTP path; it does not send traffic to any remote service. Synthetic Pod `status.ready` and `status.reason` are visualization fields, not real Kubernetes Pod API fields.
 
 Readiness, liveness and startup probe declarations are shown, but only explicit teaching success/failure cases are calculated. A liveness failure has a synthetic restart counter advanced with logical steps; no real periodSeconds/failureThreshold timer runs.
+
+`kubectl set env --from=configmap/NAME` and `--from=secret/NAME` enumerate existing keys into individual `env[].valueFrom` references, as kubectl does, while preserving unrelated `env` entries and `envFrom` sources. YAML `envFrom` remains a separate operation that imports all keys when a container starts. Configuration updates or deletion do not alter an already running container's environment; a newly started container resolves its references again, and missing required objects or keys block startup.
 
 A successful command is not proof a real application would be healthy. Use this workbench to learn what to inspect, then validate behavior in a disposable real cluster with the matching upstream docs.
