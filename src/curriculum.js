@@ -19,4 +19,3 @@ import {levels} from './curriculum/core.js';
 export {levels,modules,CURRICULUM_VERSION,E,R,N,C,ALL} from './curriculum/core.js';
 export {LEGACY_ID_TO_KEY,KEY_TO_LEGACY_ID} from './curriculum/legacy.js';
 export const levelsByKey = Object.freeze(Object.fromEntries(levels.map(level => [level.key, level])));
-
