@@ -5,7 +5,7 @@ export const PROGRESS_KEY = 'learn-k8s:progress:v2';
 export const LEGACY_PROGRESS_KEY = 'learn-k8s:progress:v1';
 const record = value => value && typeof value === 'object' && !Array.isArray(value);
 const knownKeys = new Set(levels.map(level => level.key));
-const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + 'T12:00:00Z'));
+const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + 'T12:00:00Z')) && new Date(value + 'T12:00:00Z').toISOString().slice(0,10) === value;
 export const lessonKey = value => knownKeys.has(value) ? value : levels.find(level => level.id === Number(value))?.key;
 export const lessonId = value => levels.find(level => level.key === lessonKey(value))?.id;
 export const today = () => new Date().toLocaleDateString('sv-SE');
@@ -61,12 +61,13 @@ export function validateProgress(input) {
 }
 
 export function loadProgress(storage) {
-  try {
-    const current = storage?.getItem(PROGRESS_KEY);
-    if (current) return validateProgress(JSON.parse(current));
-    const legacy = storage?.getItem(LEGACY_PROGRESS_KEY);
-    return legacy ? validateProgress(JSON.parse(legacy)) : freshProgress();
-  } catch { return freshProgress(); }
+  for (const key of [PROGRESS_KEY, LEGACY_PROGRESS_KEY]) {
+    try {
+      const value = storage?.getItem(key);
+      if (value) return validateProgress(JSON.parse(value));
+    } catch { /* A damaged new record must not hide a valid migration backup. */ }
+  }
+  return freshProgress();
 }
 export function saveProgress(storage, progress) {
   try { if (!storage) return false; storage.setItem(PROGRESS_KEY, JSON.stringify(progress)); return true; }

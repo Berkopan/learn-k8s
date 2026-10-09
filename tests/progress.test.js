@@ -65,11 +65,13 @@ test('storage prefers v2, migrates v1 when necessary, and preserves the old reco
   assert.ok(data.has(LEGACY_PROGRESS_KEY));
   assert.equal(JSON.parse(data.get(PROGRESS_KEY)).version, 2);
   assert.deepEqual(loadProgress(storage), migrated);
+  data.set(PROGRESS_KEY,'{broken');
+  assert.deepEqual(loadProgress(storage),migrated,'a damaged v2 record can recover the retained v1 backup');
 });
 
 test('untrusted records ignore unknown IDs/fields and bound notes, duplicates, settings and practice counts', () => {
   const progress = validateProgress({
-    version: 1, active: 999, completed: {999: {date: '2026-01-01'}, 1: {date: 'bad'}},
+    version: 1, active: 999, completed: {999: {date: '2026-01-01'}, 1: {date: 'bad'},2:{date:'2026-02-30'}},
     notes: {1: 'a'.repeat(9000), 999: 'no'}, bookmarks: [1, 1, 0, 999],
     settings: {speed: 100, free: true}, arbitrary: true,
   });

@@ -67,3 +67,23 @@ test('a variant cannot resume as its guided lesson or as a different seed', () =
   assert.equal(restoreSession(saved,source),null);
   assert.equal(restoreSession(saved,{...level,challengeSeed:43}),null);
 });
+
+test('supported long commands resume and invalid drafts cannot overwrite the last good record', () => {
+  const storage=memory(),level=levels[48];
+  const command='kubectl create configmap big --from-literal=key='+'a'.repeat(4100);
+  const current=freshSession(level),result=run(current.lab,command);
+  assert.equal(result.error,false);
+  const next={...current,lab:result.state,history:[command],entries:[{command,output:result.output}]};
+  assert.equal(saveSession(storage,level,next,command),true);
+  const resumed=loadSession(storage).session;
+  assert.equal(resumed.history[0],command);
+  assert.equal(resumed.commandDraft,command);
+  const valid=storage.getItem(SESSION_KEY);
+  next.lab.files={'big.yaml':[{kind:'Pod',metadata:{name:'web'}}]};
+  next.drafts={'big.yaml':{text:'x'.repeat(200001),dirty:true}};
+  assert.equal(saveSession(storage,level,next),false);
+  assert.equal(storage.getItem(SESSION_KEY),valid);
+  next.drafts={};next.lab.files['big.yaml']=Array.from({length:101},()=>({kind:'Pod',metadata:{name:'web'}}));
+  assert.equal(saveSession(storage,level,next),false);
+  assert.equal(storage.getItem(SESSION_KEY),valid);
+});
