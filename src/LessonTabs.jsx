@@ -17,7 +17,7 @@ function GuideText({text}) {
 export function LessonTabs({level, done, children}) {
   const [tab, setTab] = useState('guide');
   const practiceTrigger = useRef(null);
-  const guide = localizedGuide(level.id);
+  const guide = level.guide || localizedGuide(level);
   const total = level.steps.length;
   function startPractice() {
     setTab('practice');

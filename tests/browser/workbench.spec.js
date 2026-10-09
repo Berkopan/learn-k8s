@@ -11,6 +11,9 @@ test('first lesson, errors, reward, persistence and no duplicate XP',async({page
  await command(page,'docker pull nginx:1.27');await expect(page.locator('.mission-heading>b')).toHaveText('1/2');
  await command(page,'docker images');await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta strong')).toHaveText('+40 XP');
  await page.getByRole('button',{name:'Burada denemeye devam et'}).click();await page.reload();await expect(page.locator('.completed-label')).toBeVisible();
+ await expect(page.locator('.lesson-tab-count')).toHaveText('2/2');
+ await page.getByRole('button',{name:'Laboratuvarı sıfırla',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Laboratuvarı sıfırla',exact:true}).click();
  await command(page,'docker pull nginx:1.27');await command(page,'docker images');
  await expect(page.getByRole('dialog')).toBeVisible();await expect(page.locator('.reward-meta strong')).toHaveText('Tekrar tamamlandı');
  const value=await page.evaluate(()=>JSON.parse(localStorage.getItem('learn-k8s:progress:v2')));expect(Object.keys(value.completed)).toHaveLength(1);

@@ -4,3 +4,40 @@
 .reference-command+.reference-command{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .goal-check{font-size:11px;text-decoration:underline;text-underline-offset:3px;margin-top:8px;color:var(--muted)}
 .goal-feedback{margin:10px 0 0;padding-left:18px;font-size:11px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere}
+
+.practice-center{display:grid;gap:26px;padding:22px 26px}
+.practice-center section+section{border-top:1px solid var(--line);padding-top:22px}
+.practice-center h3{font-size:17px;margin-bottom:8px}
+.practice-center section>p{font-size:12px;line-height:1.8;color:var(--muted);margin-bottom:14px}
+.practice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.practice-grid article{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.practice-grid h4{font-size:13px;line-height:1.5}
+.practice-grid article p{font-size:11px;color:var(--muted);line-height:1.8;flex:1}
+.practice-grid .button{font-size:11px;white-space:normal;justify-content:center;min-height:38px;text-align:center}
+.scenario-seed{font-size:12px;display:flex;align-items:center;gap:12px;margin:14px 0}
+.scenario-seed input{width:140px;min-width:0;border:1px solid var(--line-strong);border-radius:4px;background:var(--recess);padding:7px 9px;font-family:var(--mono)}
+.review-list{display:grid;gap:8px;margin-bottom:12px}
+.review-list>button{display:flex;align-items:center;gap:14px;border:1px solid var(--line);padding:10px 12px;border-radius:5px;text-align:left}
+.review-list>button>span:nth-child(2){flex:1;display:grid;gap:2px}
+.review-list b{font-size:12px;font-weight:500}
+.review-list small,.review-list .mono{font-size:11px;color:var(--muted)}
+.practice-empty{border-left:2px solid var(--line);padding-left:12px}
+.prediction-check{margin:14px 0;padding:10px 12px;border:1px solid var(--line);border-radius:5px;font-size:12px}
+.prediction-check summary{cursor:pointer;color:var(--muted);font-size:11px;line-height:1.8}
+.prediction-check summary svg{margin-right:6px}
+.prediction-content{margin-top:12px}
+.prediction-content h3{font-size:13px;line-height:1.7;margin-bottom:10px}
+.prediction-options{display:grid;gap:6px}
+.prediction-options button{text-align:left;border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-size:11px;line-height:1.7}
+.prediction-options .correct{border-color:var(--good);background:var(--good-soft)}
+.prediction-options .incorrect{border-color:var(--bad);background:var(--bad-soft)}
+.prediction-content>p{font-size:11px;line-height:1.8;margin-top:10px;color:var(--muted)}
+.practice-status{font-size:11px;color:var(--muted);display:flex;gap:8px 14px;flex-wrap:wrap;padding:10px 0}
+.challenge-banner{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);font-size:11px;color:var(--accent)}
+.challenge-banner strong{flex:1;min-width:160px}
+.challenge-banner button{text-decoration:underline;text-underline-offset:3px;min-height:30px;color:var(--muted)}
+.challenge-debrief{margin:16px 0 6px;padding:12px;border-left:2px solid var(--good);background:var(--good-soft);font-size:12px;line-height:1.9}
+.challenge-debrief h3{font-size:13px;margin-bottom:6px}
+.practice-launch{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);min-height:32px}
+.logbook-practice{border-top:1px solid var(--line);padding-top:10px;margin-top:10px;width:100%;justify-content:space-between}
+@media(max-width:700px){.practice-center{padding:18px 16px;gap:20px}.practice-grid{grid-template-columns:1fr}.practice-grid article{gap:8px}.practice-grid .button{align-self:flex-start}.practice-launch{font-size:10px}.lab-breadcrumb{flex-wrap:wrap}.challenge-banner{gap:8px 14px}}

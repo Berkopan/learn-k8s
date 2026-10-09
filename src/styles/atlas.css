@@ -83,5 +83,6 @@ kbd { font-size:10px; padding:1px 5px; border:1px solid var(--line); border-radi
 .site-footer { max-width:1368px; margin:auto; padding:24px 36px; display:flex; align-items:center; gap:24px; color:var(--muted); font-size:11px; border-top:1px solid var(--line); }
 .site-footer>span { display:flex; align-items:center; gap:10px; }.site-footer i { font-style:normal; color:var(--accent); }
 .footer-browser-note { margin-left:auto; white-space:nowrap; }
+@media(max-width:480px){.footer-browser-note{white-space:normal;max-width:100%;min-width:0}}
 .site-footer .footer-link,.site-footer button { display:flex; align-items:center; gap:8px; white-space:nowrap; }
 .site-footer .footer-link:hover,.site-footer button:hover { color:var(--accent); }
