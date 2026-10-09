@@ -21,7 +21,10 @@ export const modules = [
   ['Platform araçları','Ingress, ağ politikası ve Helm','Platform kurucusu',K+'concepts/services-networking/network-policies/','kubectl apply -f FILE · helm install NAME ./chart'],
   ['Saha görevleri','Uçtan uca operasyon senaryoları','Küme kaptanı',K+'tasks/debug/debug-application/','Gözlemle → hipotez kur → düzelt → doğrula'],
 ].map(([title,subtitle,badge,source,syntax],id)=>({id,title,subtitle,badge,source,syntax}));
-export const E=(action,match={},times=1)=>({type:'event',match:{action,...match},times});
+export const E=(action,match={},times=1,scope='task')=>({type:'event',match:{action,...match},times,scope});
+export const HTTP=(service,port=80,source,namespace='default')=>({type:'event',match:{request:{service,namespace,port,status:200,...(source===undefined?{}:{source})}},times:1,scope:'task'});
+export const REACH=(service,port=80,source,namespace='default',allowed=true)=>({type:'reachable',service,port,source,namespace,allowed});
+export const PERMISSION=(verb,resource,allowed,identity='system:serviceaccount:default:reader',namespace='default')=>({type:'permission',verb,resource,allowed,identity,namespace});
 export const R=(kind,name,match={},namespace='default')=>({type:'resource',kind,name,match,namespace});
 export const N=(kind,name,namespace='default')=>({type:'absent',kind,name,namespace});
 export const C=(kind,count,match={})=>({type:'count',kind,count,match});

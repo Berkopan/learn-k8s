@@ -1,0 +1,18 @@
+export default {
+  '{0} kimliğiyle, {1} namespace’inde yeniden doğrula.': 'Verify again as {0} in the {1} namespace.',
+  '{0}:{1} için bu adımda başarılı bir istek gözlemi gerekiyor.': 'This step needs a new successful request to {0}:{1}.',
+  'Bu adım için yeni bir gözlem gerekiyor: {0}.': 'This step needs a new observation: {0}.',
+  '{0}/{1}, {2} namespace’inde henüz istenen durumda değil.': '{0}/{1} is not yet in the expected state in namespace {2}.',
+  '{0}/{1}, {2} namespace’inde bulunamadı.': '{0}/{1} was not found in namespace {2}.',
+  '{0} dosyasını düzenleyip kaydet: {1}/{2} tanımı henüz hedefle eşleşmiyor.': 'Edit and save {0}: its {1}/{2} definition does not yet match the target.',
+  '{0}/{1} hâlâ mevcut.': '{0}/{1} is still present.',
+  'Eşleşen {0} sayısı {1}; hedef {2}.': 'Matching {0} count: {1}; expected: {2}.',
+  'Laboratuvar durumu henüz bu adımın hedefiyle eşleşmiyor.': 'The lab state does not yet match this step’s target.',
+  '{0} image’ı yerel depoda bulunamadı.': 'Image {0} was not found in the local store.',
+  'Container henüz istenen ad, image ve çalışma durumunda değil.': 'The container does not yet have the expected name, image and running state.',
+  '{0} container kaydı hâlâ mevcut.': 'The {0} container record is still present.',
+  '{0} için {1} {2} yetkisi beklenen sınırda değil.': 'The {1} {2} permission for {0} does not match the required boundary.',
+  '{0} istemcisi için ağ izolasyonu doğrulanamadı.': 'Network isolation for client {0} could not be verified.',
+  '{0}:{1} üzerinden beklenen hizmet yanıtı alınamıyor.': 'The expected service response is unavailable through {0}:{1}.',
+  'Bu görevin doğrulama tanımı desteklenmiyor.': 'This task’s assessment definition is not supported.',
+};
