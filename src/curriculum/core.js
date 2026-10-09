@@ -26,12 +26,14 @@ export const HTTP=(service,port=80,source,namespace='default')=>({type:'event',m
 export const REACH=(service,port=80,source,namespace='default',allowed=true)=>({type:'reachable',service,port,source,namespace,allowed});
 export const PERMISSION=(verb,resource,allowed,identity='system:serviceaccount:default:reader',namespace='default')=>({type:'permission',verb,resource,allowed,identity,namespace});
 export const R=(kind,name,match={},namespace='default')=>({type:'resource',kind,name,match,namespace});
+export const F=(file,kind,name,match={},namespace='default')=>({type:'fileResource',file,kind,name,match,namespace});
 export const N=(kind,name,namespace='default')=>({type:'absent',kind,name,namespace});
 export const C=(kind,count,match={})=>({type:'count',kind,count,match});
 export const ALL=(...goals)=>({type:'all',goals});
 const goalClue=goal=>{
   if(!goal)return '';
   if(goal.type==='event')return ' Bu adımın başarısı bir gözlem olayıyla doğrulanır; yalnızca nesne yazmak yetmez.';
+  if(goal.type==='fileResource')return ` ${goal.file} dosyasındaki tanımı düzenleyip kaydet; canlı durumla birlikte doğrulanacak.`;
   if(goal.type==='resource')return ` Son durumda ${goal.kind}/${goal.name} üzerinde beklenen değişiklik görünmeli.`;
   if(goal.type==='absent')return ` Sonunda ${goal.kind}/${goal.name} artık bulunmamalı.`;
   if(goal.type==='count')return ` Sonuçta ${goal.kind} sayısının hedefe yaklaştığını gözlemle.`;

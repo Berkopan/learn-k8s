@@ -37,3 +37,15 @@ observation. It is not the union of every intermediate step: earlier transient
 states can intentionally disappear. Final checks run against a clone when the
 simulator would otherwise append a trace. Failed checks return localizable,
 structured feedback without awarding progress.
+
+## Writing YAML
+
+Labs 27, 30 and 67 start with a definition the learner must edit and save: a Pod
+template label, the replica count, and a readiness path. Their goals check both a
+`fileResource` in the saved file and the live resource. Saving alone does not apply
+the file; an imperative live change alone does not repair the saved source.
+
+The `referenceFiles` field supplies the optional solution and test fixture.
+`applyReferenceEdits` is a pure helper for unit reference solvers, not automatic
+learner behavior. Browser replays use `applyReferenceFiles` to enter and save the
+same content through the real editor before running the reference command.

@@ -2,19 +2,21 @@ import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {levels} from '../../src/curriculum.js';
 import {localizedCurriculum,localizedGuide,localizedReference} from '../../src/localize.js';
+import {applyReferenceFiles} from './reference-steps.js';
 
 // Legacy test files explicitly use tr-TR; this suite exercises real English negotiation.
 test.use({locale:'en-US'});
 const key='learn-k8s:progress:v2';
+const legacyKey='learn-k8s:progress:v1';
 const languageKey='learn-k8s:language:v1';
 const english=localizedCurriculum('en');
 const picker=page=>page.locator('.language-switch select');
 const practice=page=>page.getByRole('tab',{name:'Put it into practice',exact:true});
 async function command(page,text){await page.locator('#terminal-input').fill(text);await page.locator('#terminal-input').press('Enter');}
 async function openLab(page,id=1){
- await page.addInitScript(({id,key})=>{
-   if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,completed:{},bookmarks:[],notes:{},quiz:{},active:id,days:[],settings:{free:true,reduced:true,speed:2,sound:false}}));
- },{id,key});
+ await page.addInitScript(({id,key,legacyKey})=>{
+   if(!localStorage.getItem(key)&&!localStorage.getItem(legacyKey))localStorage.setItem(legacyKey,JSON.stringify({version:1,completed:{},bookmarks:[],notes:{},quiz:{},active:id,days:[],settings:{free:true,reduced:true,speed:2,sound:false}}));
+ },{id,key,legacyKey});
  await page.goto(`/#level=${id}`);
  await expect(page.locator('html')).toHaveAttribute('lang','en');
  await expect(page.locator('.lesson-title-row h1')).toHaveText(english.levels[id-1].title);
@@ -121,7 +123,7 @@ test('denied storage from startup does not break language switching',async({page
  expect(errors).toEqual([]);
 });
 
-test('all 128 English labs show their own guide and complete with the original commands',async({page},info)=>{
+test('all 128 English labs show their own guide and complete with reference commands and explicit edits',async({page},info)=>{
  test.skip(info.project.name!=='desktop','Complete English progression runs once; focused mobile interactions are tested separately.');
  test.setTimeout(360000);
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
@@ -133,7 +135,7 @@ test('all 128 English labs show their own guide and complete with the original c
    await expect(page.locator('.guide-footer .source-link')).toHaveAttribute('href',source.source);
    await practice(page).click();
    await expect(page.locator('.task-list li p')).toHaveText(translated.steps.map(step=>step.text));
-   for(const step of source.steps)await command(page,step.command);
+   for(const step of source.steps){await applyReferenceFiles(page,step);await command(page,step.command);}
    await expect(page.locator('.reward-dialog')).toBeVisible();
    await expect(page.locator('.reward-meta>span')).toContainText(String(source.id).padStart(3,'0'));
    if(source.id<128)await page.getByRole('button',{name:'Go to the next lab',exact:true}).click();
