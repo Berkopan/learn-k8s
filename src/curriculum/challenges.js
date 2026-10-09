@@ -1,5 +1,5 @@
 import {levelsByKey, LEGACY_ID_TO_KEY} from '../curriculum.js';
-import {ALL, R, HTTP, REACH, deployment, service, pod, container, patch, res} from './core.js';
+import {ALL, R, ENV, HTTP, REACH, deployment, service, pod, container, patch, res} from './core.js';
 
 export const challengeKinds = Object.freeze([
   Object.freeze({kind: 'traffic', sourceKey: LEGACY_ID_TO_KEY[122], title: 'Erişim kesintisi'}),
@@ -115,6 +115,7 @@ export function createChallenge(kind, seed = 1, locale = 'tr') {
       R('ConfigMap', settings, {data: {MODE: 'production'}}, namespace),
       R('Secret', credentials, {data: {PASSWORD: 'ZGVtby1vbmx5'}}, namespace),
       R('Deployment', app, {spec: {replicas: 2, template: {spec: {containers: [{name: 'web', envFrom: [{configMapRef: {name: settings}}, {secretRef: {name: credentials}}]}]}}}, status: {readyReplicas: 2}}, namespace),
+      ENV('Deployment', app, 'web', {MODE: 'production', PASSWORD: 'demo-only'}, namespace),
       REACH(app, 80, client, namespace),
     );
     debrief = english(locale)

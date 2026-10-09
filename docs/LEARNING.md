@@ -38,6 +38,18 @@ states can intentionally disappear. Final checks run against a clone when the
 simulator would otherwise append a trace. Failed checks return localizable,
 structured feedback without awarding progress.
 
+Named Kubernetes resource observations also specify their namespace. Inspecting
+or restarting an identically named workload in another namespace does not verify
+the requested workload. Cluster-wide and general inventory observations retain
+their intended scope.
+
+Use `ENV(kind, name, container, match, namespace)` / `runtimeEnv` when an outcome
+requires an application to consume configuration. It checks the startup snapshot
+of that container in every ready Pod owned by that controller in that namespace,
+and requires at least one ready Pod. A correct ConfigMap or Secret alone cannot
+prove that an already running process received its new values. Replica and
+configuration-reference requirements remain separate explicit resource goals.
+
 ## Writing YAML
 
 Labs 27, 30 and 67 start with a definition the learner must edit and save: a Pod

@@ -64,6 +64,20 @@ export function evaluateTask(state, goal, {events = [], lessonEvents = events} =
           : missing('resource-missing', '{0}/{1}, {2} namespace’inde bulunamadı.', current.kind, current.name, ns);
         break;
       }
+      case 'runtimeEnv': {
+        const workload = find(state, current.kind, current.name, ns);
+        const readyPods = objects(state, 'Pod', ns).filter(pod => pod.status?.ready === true
+          && pod._sim?.owner === `${current.kind}/${current.name}`);
+        // Read the process snapshot for the named container, not the current
+        // ConfigMap/Secret or another workload's environment. An empty set of
+        // running application instances is not evidence of correct consumption.
+        met = !!workload && readyPods.length > 0 && readyPods.every(pod =>
+          (pod.spec.containers || []).some(container => container.name === current.container)
+          && matchesLearningGoal(pod._sim?.environments?.[current.container], current.match || {}));
+        failure = missing('runtime-env', '{0}/{1}, {2} namespace’inde hazır Pod’lara sahip olmalı; her {3} container’ının çalışan ortamında {4} değerleri hedefle eşleşmeli. Ayar değiştiyse yeni süreç başlat.',
+          current.kind, current.name, ns, current.container, Object.keys(current.match || {}).join(', '));
+        break;
+      }
       case 'fileResource': {
         const resource = fileDocuments(state, current.file).find(item => item?.kind === current.kind
           && item.metadata?.name === current.name && (item.metadata?.namespace || 'default') === ns);
