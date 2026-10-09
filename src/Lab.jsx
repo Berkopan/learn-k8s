@@ -3,7 +3,8 @@ import {runtimeText,terminalOutput} from './runtime-text.js';
 import {contextDockerSuggestions} from './command-help.js';
 import React,{useEffect,useRef,useState} from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
-import {parseAllDocuments,stringify} from 'yaml';
+import {stringify} from 'yaml';
+import {fileDraft,updateFileDraft,parseManifestDraft} from './workbench.js';
 import {objects,quantity,suggestionWords} from './engine.js';
 import {Icon} from './icons.jsx';
 import {IconButton,Modal,Status,download} from './ui.jsx';
@@ -31,22 +32,72 @@ export function Cluster({state,level,traceIndex,sequence,inspect}){
 }
 function PodCard({pod:p,inspect}){return <button className={`pod-card pop ${p.status.ready?'ready':'not-ready'}`} onClick={()=>inspect(p)} title={`${p.metadata.name} · ${p.status.reason}`}><span className="pod-dot"/><div><b>{p.metadata.name}</b><small>{p.status.reason}{!p.status.ready&&p.status.reason==='Running'?' · NotReady':''}</small></div><span className="pod-count">{p.status.ready?p.spec.containers.length:0}/{p.spec.containers.length}</span></button>;}
 export function Trace({state,index,setIndex,playing,setPlaying,speed,setSpeed}){return <div className="trace-panel"><div className="trace-heading"><div><span className="eyebrow">{t('OLAY AKIŞI')}</span><small>{state.trace.length?`${index+1} / ${state.trace.length}`:t('Komut bekleniyor')}</small></div><div><IconButton icon={playing?'pause':'play'} label={playing?t('Animasyonu duraklat'):t('Animasyonu oynat')} onClick={()=>setPlaying(!playing)}/><select aria-label={t('Animasyon hızı')} value={speed} onChange={e=>setSpeed(Number(e.target.value))}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option></select><button className="text-button" onClick={()=>setIndex(Math.max(0,state.trace.length-1))}>{t('Sonuca git')}</button></div></div><div className="trace-content" aria-live="off">{state.trace.length?<><span className={`trace-actor ${state.trace[index]?.tone||''}`}>{state.trace[index]?.actor}</span><p>{runtimeText(state.trace[index]?.text)}</p></>:<><span className="trace-actor">{t('Senin sıran')}</span><p>{t('Bir komut çalıştır. API, controller ve node arasındaki adımlar burada görünsün.')}</p></>}</div>{state.trace.length>1&&<input className="trace-range" type="range" min={0} max={state.trace.length-1} value={index} aria-label={t('Olay adımı')} onChange={e=>{setPlaying(false);setIndex(Number(e.target.value));}}/>}</div>;}
-export function FileEditor({state,onFiles,notify}){
- const names=Object.keys(state.files),[selected,setSelected]=useState(names[0]||''),[text,setText]=useState(''),[error,setError]=useState(''),[dirty,setDirty]=useState(false),[name,setName]=useState('custom.yaml');
- const format=value=>typeof value==='string'?value:(value||[]).map(doc=>stringify(doc)).join('---\n');
- useEffect(()=>{const file=names.includes(selected)?selected:names[0]||'';setSelected(file);setText(file?format(state.files[file]):'');setDirty(false);setError('');},[selected,Object.keys(state.files).join('|')]);
- function save(){try{if(text.length>200000)throw new Error('Manifest en fazla 200 KB olabilir.');const docs=parseAllDocuments(text,{uniqueKeys:true,strict:true});if(!docs.length)throw new Error('Manifest boş.');const result=docs.map(d=>{if(d.errors.length)throw new Error(d.errors[0].message);const v=d.toJS({maxAliasCount:50});if(!v||typeof v!=='object'||Array.isArray(v)||!v.apiVersion||!v.kind||!v.metadata?.name)throw new Error('Her belge apiVersion, kind ve metadata.name içermeli.');return v;});onFiles({...state.files,[selected]:result});setDirty(false);setError('');notify(t('Dosya kaydedildi. Küme için terminalde apply çalıştır.'));}catch(e){setError(e.message);}}
- function add(){if(!/^[a-zA-Z0-9._-]+\.ya?ml$/.test(name)){setError('Basit bir .yaml veya .yml dosya adı kullan.');return;}if(Object.hasOwn(state.files,name)){setError('Bu dosya zaten var.');return;}if(names.length>=25){setError('En fazla 25 laboratuvar dosyası oluşturulabilir.');return;}onFiles({...state.files,[name]:[{apiVersion:'v1',kind:'Pod',metadata:{name:'custom'},spec:{containers:[{name:'web',image:'nginx:1.27'}]}}]});setSelected(name);setError('');}
- return <div className="file-editor"><div className="file-toolbar"><select aria-label={t('Laboratuvar dosyası')} value={selected} onChange={e=>{if(!dirty||window.confirm(t('Kaydedilmemiş değişiklikler silinsin mi?')))setSelected(e.target.value);}}>{!names.length&&<option value="">{t('Dosya yok')}</option>}{names.map(n=><option key={n}>{n}</option>)}</select><span>{dirty?t('Kaydedilmedi'):t('Bellekte kayıtlı')}</span><IconButton icon="download" label={t('Manifesti indir')} disabled={!selected} onClick={()=>download(selected,text,'text/yaml')}/></div>{selected?<><textarea aria-label={t('YAML düzenleyici')} className="yaml-editor" spellCheck={false} value={text} onChange={e=>{setText(e.target.value);setDirty(true);}} onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();save();}if(e.key==='Tab'&&!e.shiftKey){e.preventDefault();const el=e.target,start=el.selectionStart,end=el.selectionEnd;setText(text.slice(0,start)+'  '+text.slice(end));setDirty(true);requestAnimationFrame(()=>{el.selectionStart=el.selectionEnd=start+2;});}}}/><div className="file-footer"><span>{t('Kaydetmek apply etmez. Gerçek sırlarını buraya yazma.')}</span><button className="button primary small" onClick={save}>{t('Doğrula ve kaydet')}</button></div></>:<div className="empty-files"><Icon name="file" size={32}/><h3>{t('Bu seviyede hazır manifest yok.')}</h3><p>{t('Komutlarla ilerle veya kendi denemen için bir YAML dosyası oluştur.')}</p></div>}{error&&<p className="inline-error" role="alert">{t(error)}</p>}<div className="new-file"><input aria-label={t('Yeni dosya adı')} value={name} onChange={e=>setName(e.target.value)}/><button className="text-button" onClick={add}>{t('+ Dosya oluştur')}</button></div></div>;
+export function FileEditor({state,onFiles,notify,drafts,onDrafts,selectedFile,onSelectedFile}) {
+ const names=Object.keys(state.files);
+ const [localDrafts,setLocalDrafts]=useState({}),[localSelected,setLocalSelected]=useState(names[0]||'');
+ const [error,setError]=useState(''),[name,setName]=useState('custom.yaml');
+ const storedDrafts=onDrafts?(drafts||{}):localDrafts;
+ const requested=selectedFile??localSelected;
+ const selected=names.includes(requested)?requested:names[0]||'';
+ const {text,dirty}=fileDraft(state.files,storedDrafts,selected);
+ function selectFile(file){setLocalSelected(file);onSelectedFile?.(file);}
+ function writeDraft(value,isDirty=true){
+  const next=updateFileDraft(storedDrafts,selected,value,isDirty);
+  if(onDrafts)onDrafts(next);else setLocalDrafts(next);
+ }
+ useEffect(()=>{setError('');if(requested!==selected)selectFile(selected);},[selected,requested]);
+ function save(){
+  try{
+   const result=parseManifestDraft(text);
+   onFiles({...state.files,[selected]:result});
+   writeDraft(text,false);
+   setError('');
+   notify(t('Dosya kaydedildi. Küme için terminalde apply çalıştır.'));
+  }catch(error){setError(error.message);}
+ }
+ function add(){
+  if(!/^[a-zA-Z0-9._-]+\.ya?ml$/.test(name)){setError('Basit bir .yaml veya .yml dosya adı kullan.');return;}
+  if(Object.hasOwn(state.files,name)){setError('Bu dosya zaten var.');return;}
+  if(names.length>=25){setError('En fazla 25 laboratuvar dosyası oluşturulabilir.');return;}
+  onFiles({...state.files,[name]:[{apiVersion:'v1',kind:'Pod',metadata:{name:'custom'},spec:{containers:[{name:'web',image:'nginx:1.27'}]}}]});
+  // Each file keeps its own draft; opening a new file never discards the old one.
+  selectFile(name);
+  setError('');
+ }
+ function editorKey(event){
+  if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();save();}
+  if(event.key==='Tab'&&!event.shiftKey){
+   event.preventDefault();
+   const editor=event.target,start=editor.selectionStart,end=editor.selectionEnd;
+   writeDraft(text.slice(0,start)+'  '+text.slice(end));
+   requestAnimationFrame(()=>{if(editor.isConnected)editor.selectionStart=editor.selectionEnd=start+2;});
+  }
+ }
+ return <div className="file-editor">
+  <div className="file-toolbar">
+   <select aria-label={t('Laboratuvar dosyası')} value={selected} onChange={event=>selectFile(event.target.value)}>
+    {!names.length&&<option value="">{t('Dosya yok')}</option>}
+    {names.map(file=><option key={file}>{file}</option>)}
+   </select>
+   <span>{dirty?t('Kaydedilmedi'):t('Bellekte kayıtlı')}</span>
+   <IconButton icon="download" label={t('Manifesti indir')} disabled={!selected} onClick={()=>download(selected,text,'text/yaml')}/>
+  </div>
+  {selected?<>
+   <textarea aria-label={t('YAML düzenleyici')} className="yaml-editor" spellCheck={false} value={text} onChange={event=>writeDraft(event.target.value)} onKeyDown={editorKey}/>
+   <div className="file-footer"><span>{t('Kaydetmek apply etmez. Gerçek sırlarını buraya yazma.')}</span><button className="button primary small" onClick={save}>{t('Doğrula ve kaydet')}</button></div>
+  </>:<div className="empty-files"><Icon name="file" size={32}/><h3>{t('Bu seviyede hazır manifest yok.')}</h3><p>{t('Komutlarla ilerle veya kendi denemen için bir YAML dosyası oluştur.')}</p></div>}
+  {error&&<p className="inline-error" role="alert">{t(error)}</p>}
+  <div className="new-file"><input aria-label={t('Yeni dosya adı')} value={name} onChange={event=>setName(event.target.value)}/><button className="text-button" onClick={add}>{t('+ Dosya oluştur')}</button></div>
+ </div>;
 }
 export function ResourceList({state,inspect}){const [kind,setKind]=useState('all');const kinds=[...new Set(state.objects.map(r=>r.kind))].sort();const rows=state.objects.filter(r=>kind==='all'||r.kind===kind);return <div className="resource-list"><div className="file-toolbar"><select aria-label={t('Kaynak türü filtresi')} value={kind} onChange={e=>setKind(e.target.value)}><option value="all">{t('Bütün kaynaklar')}</option>{kinds.map(k=><option key={k}>{k}</option>)}</select><span>{rows.length} {t('nesne')}</span></div><div className="inventory-scroll"><table><thead><tr><th>{t('Kaynak')}</th><th>{t('Ad / namespace')}</th><th>{t('Durum')}</th></tr></thead><tbody>{rows.map((r,i)=><tr key={i}><td><span className="kind-tag">{r.kind}</span></td><td><button onClick={()=>inspect(r)}>{r.metadata.name}</button><small>{r.metadata.namespace||'cluster-scoped'}</small></td><td>{resourceLabel(r)}</td></tr>)}</tbody></table></div></div>;}
 export function Inspector({resource,onClose}){let clean=resource?structuredClone(resource):null;if(clean)delete clean._sim;return <Modal open={!!resource} onOpenChange={v=>!v&&onClose()} title={resource?`${resource.kind} / ${resource.metadata.name}`:t('Kaynak ayrıntısı')} description={t('Simüle kümenin gözlenen nesnesi. Dahili öğretim alanları gerçek API şeması değildir.')} wide><div className="inspector-body">{resource&&<><div className="inspector-summary"><Status text={resourceLabel(resource)} good={!resource.status||resource.status.ready!==false}/><span>{resource.metadata.namespace||t('Küme kapsamı')}</span><IconButton icon="download" label={t('Nesne YAML dosyasını indir')} onClick={()=>download(`${resource.metadata.name}.yaml`,stringify(clean),'text/yaml')}/></div>{resource._sim?.message&&<p className="inspector-message">{runtimeText(resource._sim.message)}</p>}<pre className="code-block">{stringify(clean)}</pre><p className="fine-print">{t('status.ready / status.reason bu görselleştirmeye ait sadeleştirilmiş alanlardır. Gerçek Pod API’sinde koşullar ve containerStatuses kullanılır.')}</p></>}</div></Modal>;}
-export function Workspace({state,level,sequence,entries,onCommand,command,setCommand,inputRef,history,onFiles,notify,settings,onSetting}){
+export function Workspace({state,level,sequence,entries,onCommand,command,setCommand,inputRef,history,onFiles,notify,settings,onSetting,drafts,onDrafts,selectedFile,onSelectedFile}){
  const [tab,setTab]=useState('terminal'),[inspect,setInspect]=useState(null),[traceIndex,setTraceIndex]=useState(0),[playing,setPlaying]=useState(true),[infoOpen,setInfoOpen]=useState(false);
  const infoRef=useRef(null);
  useEffect(()=>{setTraceIndex(settings.reduced?Math.max(0,state.trace.length-1):0);},[state.trace,settings.reduced]);
  useEffect(()=>{if(!playing||settings.reduced||traceIndex>=state.trace.length-1)return;const id=setTimeout(()=>setTraceIndex(i=>Math.min(i+1,state.trace.length-1)),600/settings.speed);return()=>clearTimeout(id);},[playing,traceIndex,state.trace,settings.speed,settings.reduced]);
  useEffect(()=>{setTab('terminal');setInspect(null);setInfoOpen(false);},[level.id]);
  useEffect(()=>{if(!infoOpen)return;const onPointer=e=>{if(!infoRef.current?.contains(e.target))setInfoOpen(false);};const onKey=e=>{if(e.key==='Escape')setInfoOpen(false);};document.addEventListener('pointerdown',onPointer);document.addEventListener('keydown',onKey);return()=>{document.removeEventListener('pointerdown',onPointer);document.removeEventListener('keydown',onKey);};},[infoOpen]);
- return <section className="workspace" aria-label={t('Canlı laboratuvar ve terminal')}><div className="zone-marker zone-marker-workbench"><span className="workbench-label">02 · WORKBENCH <span className="workbench-info" ref={infoRef}><button className="workbench-info-trigger" type="button" aria-label={t('Gerçek kümede aklında tut')} aria-expanded={infoOpen} aria-controls="real-cluster-note" onClick={()=>setInfoOpen(v=>!v)}><Icon name="info" size={14}/></button>{infoOpen&&<div className="workbench-info-popover" id="real-cluster-note" role="note"><strong>{t('Gerçek kümede')}</strong><p>{level.caution}</p></div>}</span></span><b>{t('Uygula · sonucu izle')}</b></div><div className="workspace-heading"><div><span className="live-dot"/><h2>{t('Canlı laboratuvar')}</h2></div></div><Cluster state={state} level={level} sequence={sequence} traceIndex={traceIndex} inspect={setInspect}/><Trace state={state} index={traceIndex} setIndex={setTraceIndex} playing={playing} setPlaying={setPlaying} speed={settings.speed} setSpeed={v=>onSetting('speed',v)}/><Tabs.Root value={tab} onValueChange={setTab} className="lab-tabs"><Tabs.List className="tab-list" aria-label={t('Laboratuvar araçları')}><Tabs.Trigger value="terminal"><Icon name="terminal" size={16}/>Terminal</Tabs.Trigger><Tabs.Trigger value="files"><Icon name="file" size={16}/>{t('Dosyalar')} <span>{Object.keys(state.files).length}</span></Tabs.Trigger><Tabs.Trigger value="resources"><Icon name="grid" size={16}/>{t('Kaynaklar')} <span>{state.objects.length}</span></Tabs.Trigger></Tabs.List><Tabs.Content value="terminal" forceMount hidden={tab!=='terminal'}><Terminal {...{entries,onCommand,command,setCommand,state,inputRef,history,level}}/></Tabs.Content><Tabs.Content value="files"><FileEditor {...{state,onFiles,notify}}/></Tabs.Content><Tabs.Content value="resources"><ResourceList state={state} inspect={setInspect}/></Tabs.Content></Tabs.Root><Inspector resource={inspect} onClose={()=>setInspect(null)}/></section>;
+ return <section className="workspace" aria-label={t('Canlı laboratuvar ve terminal')}><div className="zone-marker zone-marker-workbench"><span className="workbench-label">02 · WORKBENCH <span className="workbench-info" ref={infoRef}><button className="workbench-info-trigger" type="button" aria-label={t('Gerçek kümede aklında tut')} aria-expanded={infoOpen} aria-controls="real-cluster-note" onClick={()=>setInfoOpen(v=>!v)}><Icon name="info" size={14}/></button>{infoOpen&&<div className="workbench-info-popover" id="real-cluster-note" role="note"><strong>{t('Gerçek kümede')}</strong><p>{level.caution}</p></div>}</span></span><b>{t('Uygula · sonucu izle')}</b></div><div className="workspace-heading"><div><span className="live-dot"/><h2>{t('Canlı laboratuvar')}</h2></div></div><Cluster state={state} level={level} sequence={sequence} traceIndex={traceIndex} inspect={setInspect}/><Trace state={state} index={traceIndex} setIndex={setTraceIndex} playing={playing} setPlaying={setPlaying} speed={settings.speed} setSpeed={v=>onSetting('speed',v)}/><Tabs.Root value={tab} onValueChange={setTab} className="lab-tabs"><Tabs.List className="tab-list" aria-label={t('Laboratuvar araçları')}><Tabs.Trigger value="terminal"><Icon name="terminal" size={16}/>Terminal</Tabs.Trigger><Tabs.Trigger value="files"><Icon name="file" size={16}/>{t('Dosyalar')} <span>{Object.keys(state.files).length}</span></Tabs.Trigger><Tabs.Trigger value="resources"><Icon name="grid" size={16}/>{t('Kaynaklar')} <span>{state.objects.length}</span></Tabs.Trigger></Tabs.List><Tabs.Content value="terminal" forceMount hidden={tab!=='terminal'}><Terminal {...{entries,onCommand,command,setCommand,state,inputRef,history,level}}/></Tabs.Content><Tabs.Content value="files" forceMount hidden={tab!=='files'}><FileEditor {...{state,onFiles,notify,drafts,onDrafts,selectedFile,onSelectedFile}}/></Tabs.Content><Tabs.Content value="resources"><ResourceList state={state} inspect={setInspect}/></Tabs.Content></Tabs.Root><Inspector resource={inspect} onClose={()=>setInspect(null)}/></section>;
 }
