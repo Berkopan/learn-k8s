@@ -21,8 +21,14 @@ node scripts/package-labs.mjs --check
 
 The generator uses sorted entries, fixed ZIP timestamps, fixed executable permissions and stored compression. The same source bytes produce identical archives without an extra archiver dependency. Source edits must be followed by regeneration; `npm test` detects outdated archives.
 
-## Validation boundary
+## Validation scope
 
-Repository checks parse YAML, enforce namespace scoping and the intended starter faults, run shell syntax checks, exercise the namespace ownership guard with a fake `kubectl`, and check archive reproducibility. They do not run against an actual Kubernetes cluster.
+Repository checks parse YAML, enforce namespace scoping and the intended starter faults, run shell syntax checks, exercise the namespace ownership guard with a fake `kubectl`, and check archive reproducibility. These static checks do not require a cluster.
 
-A future optional CI smoke job can create a disposable kind cluster, run each `start.sh`, apply the documented repair, call `verify.sh`, then `cleanup.sh`, and destroy the cluster in an always-run cleanup step. That needs container runtime and registry access; it is separate from the current static checks.
+The separate [Real cluster labs workflow](https://github.com/Berkopan/learn-k8s/actions/workflows/real-cluster-labs.yml) is configured for pull requests, pushes to `main`, and manual runs. Its single job creates a fresh kind v0.31.0 / Kubernetes v1.35.0 cluster on a GitHub-hosted Ubuntu runner, extracts these ZIPs, and exercises each package's `start.sh` → failing initial `verify.sh` → documented repair → successful `verify.sh` → `cleanup.sh` sequence. The ConfigMap case also checks that the original Pod and container identities retain `MODE=production` after the ConfigMap changes, and that the new containers read `maintenance` after rollout.
+
+The workflow uses a dedicated kubeconfig and a digest-pinned node image, then deletes its cluster in an always-run cleanup step. It uploads command logs, plus cluster diagnostics on failure. `scripts/smoke-real-labs.sh` refuses a normal local invocation; learners use the standalone package scripts with their chosen learning cluster.
+
+A successful workflow run for a specific commit is the live-cluster result for that revision. Adding this workflow or passing the static checks alone does not establish a live pass. This one-version smoke test covers the included exercises, not every Kubernetes distribution or configuration.
+
+Pinned tool sources: [kind v0.31.0 release and image digests](https://github.com/kubernetes-sigs/kind/releases/tag/v0.31.0), [official binary asset checksums](https://api.github.com/repos/kubernetes-sigs/kind/releases/tags/v0.31.0), [kubectl binary verification](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/).

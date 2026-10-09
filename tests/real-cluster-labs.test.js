@@ -80,3 +80,39 @@ test('starter manifests contain the intended image, selector and environment exe
   assert.deepEqual(configuration.find(o=>o.kind==='Deployment').spec.template.spec.containers[0].envFrom,[{configMapRef:{name:'settings'}}]);
   assert.equal(manifests(join(root,'configmap-refresh/settings-maintenance.yaml'))[0].data.MODE,'maintenance');
 });
+
+test('real-cluster smoke and workflow shell blocks have valid syntax',()=>{
+  const workflow=manifests(resolve('.github/workflows/real-cluster-labs.yml'))[0];
+  assert.ok(Object.hasOwn(workflow.on,'pull_request'));
+  const script=spawnSync('bash',['-n',resolve('scripts/smoke-real-labs.sh')],{encoding:'utf8'});
+  assert.equal(script.status,0,script.stderr||script.error);
+  for(const job of Object.values(workflow.jobs)){
+    for(const step of job.steps.filter(step=>step.run)){
+      const result=spawnSync('bash',['-n'],{input:step.run,encoding:'utf8'});
+      assert.equal(result.status,0,`${step.name}: ${result.stderr||result.error}`);
+    }
+  }
+});
+
+test('real-cluster smoke rejects local, shared-kubeconfig and wrong-context invocations before cluster writes',()=>{
+  const temporary=mkdtempSync(join(tmpdir(),'learn-k8s-smoke-guard-'));
+  try{
+    const log=join(temporary,'calls.log');
+    const kubeconfig=join(temporary,'learn-k8s-kubeconfig');
+    writeFileSync(kubeconfig,'');
+    writeFileSync(join(temporary,'kubectl'),'#!/bin/sh\nprintf "%s\\n" "$*" >> "$LAB_TEST_LOG"\nprintf "%s\\n" "unrelated-cluster"\n',{mode:0o755});
+    for(const scenario of [
+      {actions:'false',config:kubeconfig,message:/reserved for the GitHub Actions test cluster/,calls:''},
+      {actions:'true',config:join(temporary,'user-kubeconfig'),message:/dedicated runner kubeconfig/,calls:''},
+      {actions:'true',config:kubeconfig,message:/Unexpected Kubernetes context/,calls:'config current-context\n'},
+    ]){
+      writeFileSync(log,'');
+      const result=spawnSync('bash',[resolve('scripts/smoke-real-labs.sh')],{encoding:'utf8',env:{...process.env,
+        PATH:`${temporary}${delimiter}${process.env.PATH||''}`,LAB_TEST_LOG:log,
+        GITHUB_ACTIONS:scenario.actions,RUNNER_TEMP:temporary,KUBECONFIG:scenario.config}});
+      assert.equal(result.status,1);
+      assert.match(result.stderr,scenario.message);
+      assert.equal(readFileSync(log,'utf8'),scenario.calls);
+    }
+  }finally{rmSync(temporary,{recursive:true,force:true});}
+});
