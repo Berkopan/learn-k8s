@@ -55,3 +55,22 @@ test('suggested Kubernetes resource types are supported by the current simulator
   }
   assert.deepEqual(commandCompletions('kubectl exec api-1 -- printenv -n ', state), []);
 });
+
+test('flag and output completions follow the simulator command contract', () => {
+  assert.deepEqual(commandCompletions('kubectl get pods -f', state), []);
+  assert.deepEqual(commandCompletions('kubectl get pods --filename=app', state), []);
+  assert.deepEqual(commandCompletions('kubectl describe pod api-1 -o', state), []);
+  assert.deepEqual(commandCompletions('kubectl describe pod api-1 --output=', state), []);
+  assert.deepEqual(commandCompletions('kubectl apply -f app.yaml --output=', state), [
+    'kubectl apply -f app.yaml --output=yaml', 'kubectl apply -f app.yaml --output=json',
+  ]);
+  assert.deepEqual(commandCompletions('kubectl get pods -o=', state), [
+    'kubectl get pods -o=yaml', 'kubectl get pods -o=json', 'kubectl get pods -o=wide',
+  ]);
+  assert.deepEqual(commandCompletions('kubectl config current-context -n pay', state), []);
+  assert.deepEqual(commandCompletions('docker run -n pay', state), []);
+  assert.deepEqual(commandCompletions('helm list -n pay', state), ['helm list -n payments']);
+  assert.deepEqual(commandCompletions('kubectl delete --dry-run client pod api-', state), [
+    'kubectl delete --dry-run client pod api-1', 'kubectl delete --dry-run client pod api-2',
+  ]);
+});

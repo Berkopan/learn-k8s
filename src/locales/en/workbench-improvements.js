@@ -38,4 +38,11 @@ export default {
   'Topolojiyi göster': 'Show topology',
   'Topoloji': 'Topology',
   'Aktif görev': 'Current task',
+  'Manifest en fazla 100 YAML belgesi içerebilir.': 'A manifest can contain at most 100 YAML documents.',
+  'Komut 8000 karakter sınırına ulaştı. Daha fazla metin eklemek için kısalt.': 'The command reached the 8000-character limit. Shorten it to add more text.',
+  'Yapıştırma 8000 karakter sınırını aşıyor; komut değiştirilmedi.': 'This paste exceeds the 8000-character limit; the command was kept unchanged.',
+  'YAML metni 200.000 karakter sınırına ulaştı. Daha fazla metin eklemek için kısalt.': 'The YAML reached the 200,000-character limit. Shorten it to add more text.',
+  'Yapıştırma 200.000 karakter sınırını aşıyor; YAML değiştirilmedi.': 'This paste exceeds the 200,000-character limit; the YAML was kept unchanged.',
+  'Dosya adı en fazla 200 karakter olabilir.': 'A filename can contain at most 200 characters.',
+  'Yapıştırma 200 karakter sınırını aşıyor; dosya adı değiştirilmedi.': 'This paste exceeds the 200-character limit; the filename was kept unchanged.',
 };

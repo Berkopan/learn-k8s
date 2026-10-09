@@ -59,6 +59,40 @@ test('Tab cycles real resource names and Shift+Tab still leaves the terminal inp
   await expect(page.getByRole('button', {name: 'Komutu çalıştır', exact: true})).toBeFocused();
 });
 
+test('oversized pastes are rejected visibly without truncating the command or YAML draft', async ({page}) => {
+  await openLab(page);
+  async function paste(locator, text) {
+    return locator.evaluate((element, value) => {
+      element.setSelectionRange(element.value.length, element.value.length);
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/plain', value);
+      const event = new ClipboardEvent('paste', {clipboardData, bubbles: true, cancelable: true});
+      element.dispatchEvent(event);
+      return event.defaultPrevented;
+    }, text);
+  }
+  const input = page.getByRole('textbox', {name: 'Terminal komutu', exact: true});
+  await expect(input).toHaveAttribute('maxlength', '8000');
+  await input.fill('kubectl get pods');
+  expect(await paste(input, 'x'.repeat(8001))).toBe(true);
+  await expect(input).toHaveValue('kubectl get pods');
+  await expect(page.locator('#terminal-completion-status')).toContainText('komut değiştirilmedi');
+
+  await page.getByRole('tab', {name: /^Dosyalar/}).click();
+  await page.getByRole('button', {name: '+ Dosya oluştur', exact: true}).click();
+  const editor = page.getByRole('textbox', {name: 'YAML düzenleyici', exact: true});
+  await expect(editor).toHaveAttribute('maxlength', '200000');
+  await editor.fill('# keep this unfinished draft');
+  expect(await paste(editor, 'x'.repeat(200001))).toBe(true);
+  await expect(editor).toHaveValue('# keep this unfinished draft');
+  await expect(page.locator('#file-editor-message')).toContainText('YAML değiştirilmedi');
+  const name = page.getByRole('textbox', {name: 'Yeni dosya adı', exact: true});
+  await expect(name).toHaveAttribute('maxlength', '200');
+  expect(await paste(name, 'x'.repeat(201))).toBe(true);
+  await expect(name).toHaveValue('custom.yaml');
+  await expect(page.locator('#file-editor-message')).toContainText('dosya adı değiştirilmedi');
+});
+
 test('resource differences stay collapsed until requested and a read-only command reports no changes', async ({page}) => {
   await openLab(page);
   const input = page.getByRole('textbox', {name: 'Terminal komutu', exact: true});

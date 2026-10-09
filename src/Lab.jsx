@@ -4,7 +4,7 @@ import {contextDockerSuggestions} from './command-help.js';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import {stringify} from 'yaml';
-import {fileDraft,updateFileDraft,parseManifestDraft,commandCompletions,stateChanges,resourceDiagnostics} from './workbench.js';
+import {fileDraft,updateFileDraft,parseManifestDraft,commandCompletions,stateChanges,resourceDiagnostics,WORKBENCH_LIMITS,pasteExceedsLimit} from './workbench.js';
 import {objects,quantity,suggestionWords} from './engine.js';
 import {Icon} from './icons.jsx';
 import {IconButton,Modal,Status,download} from './ui.jsx';
@@ -15,7 +15,12 @@ export function Terminal({entries,onCommand,command,setCommand,state,inputRef,hi
  useEffect(()=>{setCursor(history.length);},[history]);
  const completionMessage=completion?.candidates
   ? completion.candidates.length>1?t('{0}/{1} öneri · Tab değiştirir · Esc kapatır',[completion.index+1,completion.candidates.length]):t('Komut tamamlandı.')
-  : completion?.message?t(completion.message):t('Ctrl+L temizle · tek komut / Enter');
+  : completion?.message?t(completion.message):command.length>=WORKBENCH_LIMITS.command?t('Komut 8000 karakter sınırına ulaştı. Daha fazla metin eklemek için kısalt.'):t('Ctrl+L temizle · tek komut / Enter');
+ function paste(event){
+  if(pasteExceedsLimit(event.target,event.clipboardData.getData('text'),WORKBENCH_LIMITS.command)){
+   event.preventDefault();setCompletion({message:'Yapıştırma 8000 karakter sınırını aşıyor; komut değiştirilmedi.'});
+  }
+ }
  function key(event){
   if(event.key==='ArrowUp'){
    event.preventDefault();setCompletion(null);
@@ -57,7 +62,7 @@ export function Terminal({entries,onCommand,command,setCommand,state,inputRef,hi
   </div>
   <form className="terminal-input-row" onSubmit={submit}>
    <label htmlFor="terminal-input" className="sr-only">{t('Terminal komutu')}</label>
-   <input id="terminal-input" ref={inputRef} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} value={command} onChange={event=>{setCommand(event.target.value);setCompletion(null);}} onKeyDown={key} placeholder={t('Bir komut yaz…')} aria-describedby={completion?'terminal-completion-status':undefined}/>
+   <input id="terminal-input" ref={inputRef} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} maxLength={WORKBENCH_LIMITS.command} value={command} onChange={event=>{setCommand(event.target.value);setCompletion(null);}} onKeyDown={key} onPaste={paste} placeholder={t('Bir komut yaz…')} aria-describedby={completion||command.length>=WORKBENCH_LIMITS.command?'terminal-completion-status':undefined}/>
    <button type="submit" aria-label={t('Komutu çalıştır')}><Icon name="arrow" size={14}/></button>
   </form>
   {completion?.candidates?.length>1&&<div className="terminal-completions" role="group" aria-label={t('Komut önerileri')}>
@@ -129,10 +134,12 @@ export function FileEditor({state,onFiles,notify,drafts,onDrafts,selectedFile,on
  const requested=selectedFile??localSelected;
  const selected=names.includes(requested)?requested:names[0]||'';
  const {text,dirty}=fileDraft(state.files,storedDrafts,selected);
+ const limitMessage=text.length>=WORKBENCH_LIMITS.manifest?'YAML metni 200.000 karakter sınırına ulaştı. Daha fazla metin eklemek için kısalt.':name.length>=WORKBENCH_LIMITS.filename?'Dosya adı en fazla 200 karakter olabilir.':'';
  function selectFile(file){setLocalSelected(file);onSelectedFile?.(file);}
  function writeDraft(value,isDirty=true){
   const next=updateFileDraft(storedDrafts,selected,value,isDirty);
   if(onDrafts)onDrafts(next);else setLocalDrafts(next);
+  setError('');
  }
  useEffect(()=>{setError('');if(requested!==selected)selectFile(selected);},[selected,requested]);
  function save(){
@@ -145,6 +152,7 @@ export function FileEditor({state,onFiles,notify,drafts,onDrafts,selectedFile,on
   }catch(error){setError(error.message);}
  }
  function add(){
+  if(name.length>WORKBENCH_LIMITS.filename){setError('Dosya adı en fazla 200 karakter olabilir.');return;}
   if(!/^[a-zA-Z0-9._-]+\.ya?ml$/.test(name)){setError('Basit bir .yaml veya .yml dosya adı kullan.');return;}
   if(Object.hasOwn(state.files,name)){setError('Bu dosya zaten var.');return;}
   if(names.length>=25){setError('En fazla 25 laboratuvar dosyası oluşturulabilir.');return;}
@@ -158,8 +166,14 @@ export function FileEditor({state,onFiles,notify,drafts,onDrafts,selectedFile,on
   if(event.key==='Tab'&&!event.shiftKey){
    event.preventDefault();
    const editor=event.target,start=editor.selectionStart,end=editor.selectionEnd;
+   if(pasteExceedsLimit(editor,'  ',WORKBENCH_LIMITS.manifest)){setError('YAML metni 200.000 karakter sınırına ulaştı. Daha fazla metin eklemek için kısalt.');return;}
    writeDraft(text.slice(0,start)+'  '+text.slice(end));
    requestAnimationFrame(()=>{if(editor.isConnected)editor.selectionStart=editor.selectionEnd=start+2;});
+  }
+ }
+ function paste(event,maximum,message){
+  if(pasteExceedsLimit(event.target,event.clipboardData.getData('text'),maximum)){
+   event.preventDefault();setError(message);
   }
  }
  return <div className="file-editor">
@@ -172,11 +186,11 @@ export function FileEditor({state,onFiles,notify,drafts,onDrafts,selectedFile,on
    <IconButton icon="download" label={t('Manifesti indir')} disabled={!selected} onClick={()=>download(selected,text,'text/yaml')}/>
   </div>
   {selected?<>
-   <textarea aria-label={t('YAML düzenleyici')} className="yaml-editor" spellCheck={false} value={text} onChange={event=>writeDraft(event.target.value)} onKeyDown={editorKey}/>
+   <textarea aria-label={t('YAML düzenleyici')} className="yaml-editor" spellCheck={false} maxLength={WORKBENCH_LIMITS.manifest} value={text} onChange={event=>writeDraft(event.target.value)} onKeyDown={editorKey} onPaste={event=>paste(event,WORKBENCH_LIMITS.manifest,'Yapıştırma 200.000 karakter sınırını aşıyor; YAML değiştirilmedi.')} aria-describedby={error||limitMessage?'file-editor-message':undefined}/>
    <div className="file-footer"><span>{t('Kaydetmek apply etmez. Gerçek sırlarını buraya yazma.')}</span><button className="button primary small" onClick={save}>{t('Doğrula ve kaydet')}</button></div>
   </>:<div className="empty-files"><Icon name="file" size={32}/><h3>{t('Bu seviyede hazır manifest yok.')}</h3><p>{t('Komutlarla ilerle veya kendi denemen için bir YAML dosyası oluştur.')}</p></div>}
-  {error&&<p className="inline-error" role="alert">{t(error)}</p>}
-  <div className="new-file"><input aria-label={t('Yeni dosya adı')} value={name} onChange={event=>setName(event.target.value)}/><button className="text-button" onClick={add}>{t('+ Dosya oluştur')}</button></div>
+  {(error||limitMessage)&&<p className="inline-error" id="file-editor-message" role="alert">{t(error||limitMessage)}</p>}
+  <div className="new-file"><input aria-label={t('Yeni dosya adı')} maxLength={WORKBENCH_LIMITS.filename} value={name} onChange={event=>{setName(event.target.value);setError('');}} onPaste={event=>paste(event,WORKBENCH_LIMITS.filename,'Yapıştırma 200 karakter sınırını aşıyor; dosya adı değiştirilmedi.')} aria-describedby={error||limitMessage?'file-editor-message':undefined}/><button className="text-button" onClick={add}>{t('+ Dosya oluştur')}</button></div>
  </div>;
 }
 export function ResourceList({state,inspect}){const [kind,setKind]=useState('all');const kinds=[...new Set(state.objects.map(r=>r.kind))].sort();const rows=state.objects.filter(r=>kind==='all'||r.kind===kind);return <div className="resource-list"><div className="file-toolbar"><select aria-label={t('Kaynak türü filtresi')} value={kind} onChange={e=>setKind(e.target.value)}><option value="all">{t('Bütün kaynaklar')}</option>{kinds.map(k=><option key={k}>{k}</option>)}</select><span>{rows.length} {t('nesne')}</span></div><div className="inventory-scroll"><table><thead><tr><th>{t('Kaynak')}</th><th>{t('Ad / namespace')}</th><th>{t('Durum')}</th></tr></thead><tbody>{rows.map((r,i)=><tr key={i}><td><span className="kind-tag">{r.kind}</span></td><td><button onClick={()=>inspect(r)}>{r.metadata.name}</button><small>{r.metadata.namespace||'cluster-scoped'}</small></td><td>{resourceLabel(r)}</td></tr>)}</tbody></table></div></div>;}

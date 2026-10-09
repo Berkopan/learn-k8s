@@ -1,5 +1,10 @@
 import {parseAllDocuments, stringify} from 'yaml';
-import {aliases, matches, schedulingChecks} from './simulator-core.js';
+import {aliases, matches, schedulingChecks, validateInvocation} from './simulator-core.js';
+
+export const WORKBENCH_LIMITS = Object.freeze({command: 8000, manifest: 200000, filename: 200, documents: 100});
+
+export const pasteExceedsLimit = (element, pasted, maximum) =>
+  element.value.length - (element.selectionEnd - element.selectionStart) + pasted.length > maximum;
 
 /** Editor drafts are separate from the parsed manifests used by kubectl apply. */
 export function manifestText(file) {
@@ -18,9 +23,10 @@ export function updateFileDraft(drafts, name, text, dirty = true) {
 }
 
 export function parseManifestDraft(text) {
-  if (text.length > 200000) throw new Error('Manifest en fazla 200 KB olabilir.');
+  if (text.length > WORKBENCH_LIMITS.manifest) throw new Error('Manifest en fazla 200 KB olabilir.');
   const documents = parseAllDocuments(text, {uniqueKeys: true, strict: true});
   if (!documents.length) throw new Error('Manifest boş.');
+  if (documents.length > WORKBENCH_LIMITS.documents) throw new Error('Manifest en fazla 100 YAML belgesi içerebilir.');
   return documents.map(document => {
     if (document.errors.length) throw new Error(document.errors[0].message);
     const value = document.toJS({maxAliasCount: 50});
@@ -55,7 +61,7 @@ const valueFlags = new Set(['-n', '--namespace', '-f', '--filename', '-o', '--ou
   '--field-selector', '--as', '--image', '--replicas', '--port', '--target-port', '--type', '--name',
   '--from-literal', '--from', '--env', '--requests', '--limits', '--cpu-percent', '--min', '--max',
   '--schedule', '--restart', '--verb', '--resource', '--role', '--serviceaccount', '--class', '--rule',
-  '-p', '--patch', '--timeout', '--for', '--set', '--to-revision']);
+  '-p', '--patch', '--timeout', '--for', '--set', '--to-revision', '--dry-run']);
 
 // A partial input is not an invocation: unfinished quotes or flags must never
 // execute, throw, or erase the user's already-written arguments.
@@ -87,9 +93,31 @@ export function commandCompletions(input, state, fallback = []) {
   if (!parsed) return [];
   const {tokens, active, prefix} = parsed;
   if (tokens.includes('--')) return [];
-  const finish = values => [...new Set(values)].filter(value => value !== input);
+  const finish = values => [...new Set(values)].filter(value => value !== input && value.length <= WORKBENCH_LIMITS.command);
   const words = (values, partial = active, lead = prefix, suffix = '') => finish(values
     .filter(value => String(value).startsWith(partial)).map(value => `${lead}${value}${suffix}`));
+  let namespace = state.namespace || 'default', allNamespaces = false;
+  const positionals = [];
+  for (let index = 1; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (token === '-A' || token === '--all-namespaces') {allNamespaces = true; continue;}
+    if (token.startsWith('--namespace=')) {namespace = token.slice(12); continue;}
+    if (token.startsWith('-n=')) {namespace = token.slice(3); continue;}
+    if (valueFlags.has(token)) {
+      if (token === '-n' || token === '--namespace') namespace = tokens[index + 1] || namespace;
+      index++;
+    } else if (!token.startsWith('-')) positionals.push(token);
+  }
+  // Reuse the simulator's command contract so completion cannot advertise flags
+  // that the same verb rejects. Docker retains its own contextual suggestions.
+  const flagAllowed = (flag, value) => {
+    if (!['kubectl', 'helm'].includes(tokens[0])) return false;
+    if (flag === 'help') return true;
+    try {
+      validateInvocation({binary: tokens[0], args: positionals, flags: {[flag]: value}, tail: []});
+      return true;
+    } catch { return false; }
+  };
   const objects = state.objects || [];
   const namespaces = [...new Set([
     state.namespace || 'default',
@@ -97,14 +125,17 @@ export function commandCompletions(input, state, fallback = []) {
     ...objects.map(resource => resource.metadata?.namespace).filter(Boolean),
   ])].sort();
   const files = Object.keys(state.files || {}).sort();
-  if (['-n', '--namespace'].includes(tokens.at(-1))) return words(namespaces);
-  if (active.startsWith('--namespace=')) return words(namespaces, active.slice(12), prefix + '--namespace=');
-  if (active.startsWith('-n=')) return words(namespaces, active.slice(3), prefix + '-n=');
-  if (['-f', '--filename'].includes(tokens.at(-1))) return words(files);
-  if (active.startsWith('--filename=')) return words(files, active.slice(11), prefix + '--filename=');
-  if (active.startsWith('-f=')) return words(files, active.slice(3), prefix + '-f=');
-  if (['-o', '--output'].includes(tokens.at(-1))) return words(['yaml', 'json', 'wide']);
-  if (active.startsWith('--output=')) return words(['yaml', 'json', 'wide'], active.slice(9), prefix + '--output=');
+  const flagValues = (flag, values, partial = active, lead = prefix) =>
+    words(values.filter(value => flagAllowed(flag, value)), partial, lead);
+  if (['-n', '--namespace'].includes(tokens.at(-1))) return flagValues(tokens.at(-1).replace(/^-+/, ''), namespaces);
+  if (active.startsWith('--namespace=')) return flagValues('namespace', namespaces, active.slice(12), prefix + '--namespace=');
+  if (active.startsWith('-n=')) return flagValues('n', namespaces, active.slice(3), prefix + '-n=');
+  if (['-f', '--filename'].includes(tokens.at(-1))) return flagValues(tokens.at(-1).replace(/^-+/, ''), files);
+  if (active.startsWith('--filename=')) return flagValues('filename', files, active.slice(11), prefix + '--filename=');
+  if (active.startsWith('-f=')) return flagValues('f', files, active.slice(3), prefix + '-f=');
+  if (['-o', '--output'].includes(tokens.at(-1))) return flagValues(tokens.at(-1).replace(/^-+/, ''), ['yaml', 'json', 'wide']);
+  if (active.startsWith('--output=')) return flagValues('output', ['yaml', 'json', 'wide'], active.slice(9), prefix + '--output=');
+  if (active.startsWith('-o=')) return flagValues('o', ['yaml', 'json', 'wide'], active.slice(3), prefix + '-o=');
   if (tokens[0] === 'cat' && tokens.length === 1) return words(files);
   if (!tokens.length) return words(['kubectl', 'docker', 'helm', 'lab', 'help', 'ls', 'cat', 'clear', 'history']);
   if (tokens[0] === 'docker') return finish(fallback.filter(candidate => candidate.startsWith(input)));
@@ -120,19 +151,6 @@ export function commandCompletions(input, state, fallback = []) {
   }
   if (tokens[0] !== 'kubectl') return finish(fallback.filter(candidate => candidate.startsWith(input)));
 
-  let namespace = state.namespace || 'default', allNamespaces = false;
-  const positionals = [];
-  for (let index = 1; index < tokens.length; index++) {
-    const token = tokens[index];
-    if (token === '--') break;
-    if (token === '-A' || token === '--all-namespaces') {allNamespaces = true; continue;}
-    if (token.startsWith('--namespace=')) {namespace = token.slice(12); continue;}
-    if (token.startsWith('-n=')) {namespace = token.slice(3); continue;}
-    if (valueFlags.has(token)) {
-      if (token === '-n' || token === '--namespace') namespace = tokens[index + 1] || namespace;
-      index++;
-    } else if (!token.startsWith('-')) positionals.push(token);
-  }
   const namesFor = kind => objects.filter(resource => resource.kind === kind
     && (clusterKinds.has(kind) || allNamespaces || (resource.metadata.namespace || 'default') === namespace))
     .map(resource => resource.metadata.name).sort();
@@ -140,7 +158,11 @@ export function commandCompletions(input, state, fallback = []) {
   if (!verb) return words(['get', 'describe', 'apply', 'diff', 'create', 'run', 'delete', 'scale', 'expose', 'logs',
     'exec', 'set', 'rollout', 'label', 'annotate', 'patch', 'autoscale', 'top', 'auth', 'cordon', 'uncordon',
     'drain', 'taint', 'wait', 'config', 'explain', 'port-forward', 'api-resources', 'cluster-info', 'version'], active, prefix, ' ');
-  if (active.startsWith('-')) return words(['-n ', '--namespace=', '-o ', '--output=', '-f ', '--filename=', '--help']);
+  if (active.startsWith('-')) return words([
+    ['-n ', 'n', namespace], ['--namespace=', 'namespace', namespace],
+    ['-o ', 'o', 'yaml'], ['--output=', 'output', 'yaml'],
+    ['-f ', 'f', 'manifest.yaml'], ['--filename=', 'filename', 'manifest.yaml'], ['--help', 'help', true],
+  ].filter(([, flag, value]) => flagAllowed(flag, value)).map(([suggestion]) => suggestion));
   if (['cordon', 'uncordon', 'drain'].includes(verb) && positionals.length === 1) return words(namesFor('Node'));
   if (['logs', 'exec'].includes(verb) && positionals.length === 1) {
     if (active.includes('/')) {
