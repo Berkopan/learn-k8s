@@ -262,7 +262,8 @@ function resourceArgs(args) {const [raw,name]=args;const [type,inline]=String(ra
 function listRows(items,wide=false) {if(!items.length)return 'No resources found.';const rows=[['KIND','NAME','NAMESPACE','STATUS',...(wide?['NODE / DETAIL']:[])],...items.map(r=>[r.kind,r.metadata.name,r.metadata.namespace||'—',r.status?.reason||(r.kind==='Deployment'||r.kind==='StatefulSet'?`${r.status?.readyReplicas||0}/${r.spec.replicas??1} Ready`:r.status?.phase||(r.kind==='Job'?`${r.status?.succeeded||0} Complete`:r.kind==='Service'?r.spec.type||'ClusterIP':r.kind==='Node'?(r.spec.unschedulable?'Ready,SchedulingDisabled':'Ready'):'Active')),...(wide?[r.spec?.nodeName||r.spec?.clusterIP||r.spec?.storageClassName||'—']:[])])];const widths=rows[0].map((_,i)=>Math.min(50,Math.max(...rows.map(r=>String(r[i]).length))+3));return rows.map(row=>row.map((x,i)=>String(x).padEnd(widths[i])).join('')).join('\n');}
 function templateOf(r){return r.kind==='Pod'?r.spec:r.spec?.template?.spec;}
 function apiCan(s,verb,resource,identity,ns){if(!identity)return true;const parts=String(identity).split(':');if(parts.length!==4||parts[0]!=='system'||parts[1]!=='serviceaccount')return false;const account=parts[3],accountNs=parts[2];return objects(s,'RoleBinding',ns).some(b=>(b.subjects||[]).some(x=>x.kind==='ServiceAccount'&&x.name===account&&(x.namespace||ns)===accountNs)&&(find(s,'Role',b.roleRef?.name,ns)?.rules||[]).some(r=>(r.verbs.includes(verb)||r.verbs.includes('*'))&&(r.resources.includes(resource)||r.resources.includes('*'))));}
-function traffic(s,host,ns,sourceName) {
+function trafficResult(s,host,ns,sourceName) {
+  if(typeof host!=='string'||!host)throw new Error('Service adı gerekli. lab request SERVICE[:PORT] kullan.');
   const hostname=host.replace(/^https?:\/\//,'').split('/')[0], [address,portText]=hostname.split(':'),parts=address.split('.');const serviceName=parts[0],targetNs=parts[1]||ns,svc=ensure(s,'Service',serviceName,targetNs),port=Number(portText||80);
   if(!svc.spec.ports.some(p=>Number(p.port)===port))throw new Error(`Connection refused: Service ${serviceName}, ${port} portunu sunmuyor.`);
   if(!svc.spec.selector)throw new Error('Selector bulunmayan Service için bu model otomatik endpoint üretmez.');
@@ -273,11 +274,15 @@ function traffic(s,host,ns,sourceName) {
   const source=sourceName?ensure(s,'Pod',sourceName,ns):null;
   if(source&&!source.status.ready)throw new Error('Kaynak Pod çalışır durumda değil.');
   const policies=objects(s,'NetworkPolicy',targetNs).filter(p=>matches(targets[0].metadata.labels,p.spec.podSelector?.matchLabels||{})&&(p.spec.policyTypes||['Ingress']).includes('Ingress'));
-  if(policies.length&&!policies.some(p=>(p.spec.ingress||[]).some(rule=>(!rule.ports||rule.ports.some(x=>Number(x.port)===Number(svc.spec.ports.find(p=>Number(p.port)===port).targetPort||port)))&&(!rule.from||rule.from.some(x=>(!x.podSelector||source&&matches(source.metadata.labels,x.podSelector.matchLabels||{}))&&(!x.namespaceSelector||matches(find(s,'Namespace',ns)?.metadata.labels,x.namespaceSelector.matchLabels||{}))&&(x.namespaceSelector||ns===targetNs))))))throw new Error('Connection timed out: NetworkPolicy trafiği engelliyor.');
-  pushTrace(s,'Service',`${serviceName}:${port} → ${targets[0].metadata.name}`,'traffic');return `HTTP/1.1 200 OK\nService: ${serviceName}.${targetNs}\nPod: ${targets[0].metadata.name}\nHello from the simulated cluster!`;
+  if(policies.length&&!policies.some(p=>(p.spec.ingress||[]).some(rule=>(!rule.ports?.length||rule.ports.some(x=>Number(x.port)===Number(svc.spec.ports.find(p=>Number(p.port)===port).targetPort||port)))&&(!rule.from?.length||rule.from.some(x=>(!x.podSelector||source&&matches(source.metadata.labels,x.podSelector.matchLabels||{}))&&(!x.namespaceSelector||matches(find(s,'Namespace',ns)?.metadata.labels,x.namespaceSelector.matchLabels||{}))&&(!x.podSelector||x.namespaceSelector||ns===targetNs))))))throw new Error('Connection timed out: NetworkPolicy trafiği engelliyor.');
+  pushTrace(s,'Service',`${serviceName}:${port} → ${targets[0].metadata.name}`,'traffic');
+  return {output:`HTTP/1.1 200 OK\nService: ${serviceName}.${targetNs}\nPod: ${targets[0].metadata.name}\nHello from the simulated cluster!`,request:{service:serviceName,namespace:targetNs,port,source:sourceName||null,status:200}};
 }
+// Preserve the string-returning evaluator API; callers wanting an observation
+// can use trafficResult without reconstructing request facts from output prose.
+function traffic(s,host,ns,sourceName){return trafficResult(s,host,ns,sourceName).output;}
 const help=generalHelp();
 knownFlags.add('current');booleanFlags.add('current');
 for(const flag of ['watch','w','from-file','sort-by','context','k','command','record','overrides','v','tolerations','container','c','tail','i','t','it','delete-emptydir-data','list'])knownFlags.delete(flag);
 
-export { aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, traffic, help };
+export { aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, traffic, trafficResult, help };

@@ -1,6 +1,6 @@
 import {helpText,helpTopic,validateDockerInvocation,dockerSuggestions} from './command-help.js';
 import {copy, object, pod, deployment, service, job, cron, meta, isCluster, subset, merge, yaml, refKey, pathGet} from './model.js';
-import { kindOf, tokenize, parse, validateInvocation, objects, find, quantity, matches, createLab, aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, traffic } from './simulator-core.js';
+import { kindOf, tokenize, parse, validateInvocation, objects, find, quantity, matches, createLab, aliases, ensure, count, labelSelector, pushTrace, clean, validate, put, reconcile, resourceArgs, listRows, templateOf, apiCan, trafficResult } from './simulator-core.js';
 export { kindOf, tokenize, parse, objects, find, quantity, matches, createLab };
 const renderObjects=(items,format)=>format==='json'?JSON.stringify(items.length===1?clean(items[0]):{apiVersion:'v1',kind:'List',items:items.map(clean)},null,2):items.map(r=>yaml(clean(r))).join('\n---\n');
 function execute(s,q){
@@ -15,7 +15,7 @@ function execute(s,q){
   if(binary==='lab'){
     event={action:`lab ${a[0]}`,value:a[1]};
     if(a[0]==='load'){s.load=Number(a[1]);if(!Number.isFinite(s.load)||s.load<0||s.load>500)throw new Error('lab load 0–500 arası CPU request yüzdesi gerektirir.');out=`Simüle CPU kullanımı: request değerinin %${s.load} kadarı. HPA döngüsü için lab tick.`;}
-    else if(a[0]==='request')out=traffic(s,a[1],ns);
+    else if(a[0]==='request'){const response=trafficResult(s,a[1],ns);out=response.output;event.request=response.request;}
     else if(a[0]==='tick'){
       s.ticks++;
       for(const p of objects(s,'Pod')){p._sim.initDone=true;if(p._sim.owner?.startsWith('Job/'))p._sim.complete=true;}
@@ -45,7 +45,7 @@ function execute(s,q){
     else if(verb==='uninstall'){if(!release)throw new Error('Release yok.');s.releases=s.releases.filter(r=>r!==release);s.objects=s.objects.filter(r=>!((r.metadata.name===name&&['Deployment','Service'].includes(r.kind))||r._sim?.owner===`Deployment/${name}`||r.kind==='ReplicaSet'&&r._sim?.owner===name));out=`Release ${name} uninstalled`;}
     else throw new Error('Desteklenmeyen Helm komutu. help kullan.');reconcile(s);return {out,event};
   }
-  if(binary==='curl'){if(!s.forward)throw new Error('Önce kubectl port-forward kullan. Gerçek ağ bağlantısı açılmaz.');const url=a[0]?.match(/^http:\/\/(?:localhost|127\.0\.0\.1):(\d+)(?:\/.*)?$/);if(!url||Number(url[1])!==s.forward.local)throw new Error('Yalnız açık simüle port-forward üzerindeki localhost portuna istek gönderilebilir.');return {out:traffic(s,s.forward.service,s.forward.namespace),event:{action:'curl'}};}
+  if(binary==='curl'){if(!s.forward)throw new Error('Önce kubectl port-forward kullan. Gerçek ağ bağlantısı açılmaz.');const url=a[0]?.match(/^http:\/\/(?:localhost|127\.0\.0\.1):(\d+)(?:\/.*)?$/);if(!url||Number(url[1])!==s.forward.local)throw new Error('Yalnız açık simüle port-forward üzerindeki localhost portuna istek gönderilebilir.');const response=trafficResult(s,s.forward.service,s.forward.namespace);return {out:response.output,event:{action:'curl',request:response.request}};}
   if(binary!=='kubectl')throw new Error(`${binary}: command not found. Bu güvenli simülasyonda help komutunu kullan.`);
   const verb=a.shift();event={action:verb,namespace:ns};
   if(f.as&&verb!=='auth'){
@@ -145,14 +145,28 @@ function execute(s,q){
   else if(verb==='logs'||verb==='exec'){
     const raw=a[0],p=raw?.startsWith('deployment/')?objects(s,'Pod',ns).find(p=>p._sim?.owner===raw):ensure(s,'Pod',String(raw||'').replace(/^pod\//,''),ns);if(!p)throw new Error('Pod bulunamadı.');event={...event,kind:'Pod',name:p.metadata.name,previous:!!f.previous};
     if(verb==='logs'){if(f.previous&&!p.status.restarts)throw new Error('Önceki container örneği bulunamadı.');out=p._sim.log||(['CrashLoopBackOff','CreateContainerConfigError'].includes(p.status.reason)?`ERROR: ${p._sim.message||'application exited with code 1'}`:p.status.reason==='ImagePullBackOff'?'Container henüz başlamadı; image çekilemedi.':'Server listening on port 80\nGET / 200\nrequest_id=lab-42 status=ok');}
-    else{if(p.status.phase!=='Running'||['CrashLoopBackOff','CreateContainerConfigError','ImagePullBackOff'].includes(p.status.reason))throw new Error('exec için çalışan ve erişilebilir bir container gerekli.');event.command=tail.join(' ');if(tail[0]==='printenv')out=tail[1]?String(p._sim.envSnapshot?.[tail[1]]??''):Object.entries(p._sim.envSnapshot||{}).map(([k,v])=>`${k}=${v}`).join('\n')||'(custom environment empty)';else if(tail[0]==='hostname')out=p.metadata.name;else if(['wget','curl'].includes(tail[0]))out=traffic(s,tail.find(w=>w.startsWith('http'))||tail.at(-1),ns,p.metadata.name);else if(tail[0]==='nslookup'){const host=tail[1],r=ensure(s,'Service',host.split('.')[0],host.split('.')[1]||ns);out=`Server: 10.96.0.10\nName: ${host}\nAddress: ${r.spec.clusterIP}`;}else throw new Error('Desteklenen container komutları: printenv, hostname, nslookup, wget, curl. İnteraktif shell açılmaz.');}
+    else{if(p.status.phase!=='Running'||['CrashLoopBackOff','CreateContainerConfigError','ImagePullBackOff'].includes(p.status.reason))throw new Error('exec için çalışan ve erişilebilir bir container gerekli.');event.command=tail.join(' ');if(tail[0]==='printenv')out=tail[1]?String(p._sim.envSnapshot?.[tail[1]]??''):Object.entries(p._sim.envSnapshot||{}).map(([k,v])=>`${k}=${v}`).join('\n')||'(custom environment empty)';else if(tail[0]==='hostname')out=p.metadata.name;else if(['wget','curl'].includes(tail[0])){const response=trafficResult(s,tail.find(w=>w.startsWith('http'))||tail.at(-1),ns,p.metadata.name);out=response.output;event.request=response.request;}else if(tail[0]==='nslookup'){const host=tail[1],r=ensure(s,'Service',host.split('.')[0],host.split('.')[1]||ns);out=`Server: 10.96.0.10\nName: ${host}\nAddress: ${r.spec.clusterIP}`;}else throw new Error('Desteklenen container komutları: printenv, hostname, nslookup, wget, curl. İnteraktif shell açılmaz.');}
   }
   else if(verb==='port-forward'){const {kind,name}=resourceArgs(a);let svc=kind==='Service'?ensure(s,kind,name,ns):objects(s,'Service',ns).find(x=>x.metadata.name===name);if(!svc)throw new Error('Bu örnekte Service üzerinden port-forward kullan.');const ports=a.at(-1);if(!/^\d+:\d+$/.test(ports))throw new Error('LOCAL:REMOTE port çifti gerekli.');s.forward={local:Number(ports.split(':')[0]),service:`${svc.metadata.name}:${ports.split(':')[1]}`,namespace:ns};event={...event,kind,name};out=`Forwarding from 127.0.0.1:${ports.split(':')[0]} -> ${ports.split(':')[1]} (simulated)\nGerçek port açılmadı. curl http://localhost:${ports.split(':')[0]} ile örnek isteği gör.`;}
   else if(verb==='autoscale'){const {kind,name}=resourceArgs(a);const r=ensure(s,kind,name,ns);if(kind!=='Deployment')throw new Error('Bu örnekte Deployment autoscale edilir.');const min=count(f.min||1),max=count(f.max),target=Number(f['cpu-percent']||80);if(max<min||min<1||target<=0)throw new Error('Geçersiz HPA sınırları.');const h=object('HorizontalPodAutoscaler',name,{scaleTargetRef:{apiVersion:'apps/v1',kind:'Deployment',name},minReplicas:min,maxReplicas:max,metrics:[{type:'Resource',resource:{name:'cpu',target:{type:'Utilization',averageUtilization:target}}}]});h.metadata.namespace=r.metadata.namespace;put(s,h,{create:true});event={...event,kind:'HorizontalPodAutoscaler',name};out=`horizontalpodautoscaler/${name} autoscaled`;}
   else if(verb==='auth'){if(a[0]!=='can-i')throw new Error('auth can-i kullan.');out=apiCan(s,a[1],a[2],f.as,ns)?'yes':'no';event={...event,action:'auth can-i',verb:a[1],resource:a[2],identity:f.as,answer:out};}
   else if(['cordon','uncordon','drain'].includes(verb)){
     const n=ensure(s,'Node',a[0]);event={...event,kind:'Node',name:a[0]};
-    if(verb==='drain'){const onNode=objects(s,'Pod').filter(p=>p.spec.nodeName===a[0]);if(onNode.some(p=>!p._sim.owner)&&!f.force)throw new Error('Yönetilmeyen Pod var. Bu labda kontrollü workload ile drain dene.');if(onNode.some(p=>p._sim.owner?.startsWith('DaemonSet/'))&&!f['ignore-daemonsets'])throw new Error('DaemonSet Podları için --ignore-daemonsets gerekli.');for(const pdb of objects(s,'PodDisruptionBudget')){const selected=objects(s,'Pod',pdb.metadata.namespace).filter(p=>p.status.ready&&matches(p.metadata.labels,pdb.spec.selector?.matchLabels||{})),evict=selected.filter(p=>p.spec.nodeName===a[0]).length;if(selected.length-evict<Number(pdb.spec.minAvailable||0))throw new Error('Cannot evict pod: PodDisruptionBudget would be violated. Önce kapasiteyi ve minAvailable değerini incele.');}s.objects=s.objects.filter(p=>p.kind!=='Pod'||p.spec.nodeName!==a[0]||p._sim.owner?.startsWith('DaemonSet/'));}
+    if(verb==='drain'){
+      const onNode=objects(s,'Pod').filter(p=>p.spec.nodeName===a[0]);
+      if(onNode.some(p=>!p._sim.owner)&&!f.force)throw new Error('Yönetilmeyen Pod var. Bu labda kontrollü workload ile drain dene.');
+      if(onNode.some(p=>p._sim.owner?.startsWith('DaemonSet/'))&&!f['ignore-daemonsets'])throw new Error('DaemonSet Podları için --ignore-daemonsets gerekli.');
+      const candidates=onNode.filter(p=>!p._sim.owner?.startsWith('DaemonSet/'));
+      for(const pdb of objects(s,'PodDisruptionBudget')){
+        const matchesBudget=p=>p.metadata.namespace===pdb.metadata.namespace&&matches(p.metadata.labels,pdb.spec.selector?.matchLabels||{});
+        const affected=candidates.filter(p=>matchesBudget(p)&&!['Succeeded','Failed'].includes(p.status.phase));
+        if(!affected.length)continue;
+        const ready=objects(s,'Pod',pdb.metadata.namespace).filter(p=>matchesBudget(p)&&p.status.ready).length;
+        const removedReady=affected.filter(p=>p.status.ready).length;
+        if(ready-removedReady<Number(pdb.spec.minAvailable||0))throw new Error('Cannot evict pod: PodDisruptionBudget would be violated. Önce kapasiteyi ve minAvailable değerini incele.');
+      }
+      s.objects=s.objects.filter(p=>!candidates.includes(p));
+    }
     n.spec.unschedulable=verb!=='uncordon';out=`node/${a[0]} ${verb==='drain'?'drained':verb==='cordon'?'cordoned':'uncordoned'}`;
   }
   else if(verb==='taint'){const {kind,name}=resourceArgs(a);if(kind!=='Node')throw new Error('Node gerekli.');const n=ensure(s,kind,name),text=a.at(-1);event={...event,kind,name};if(text.endsWith('-')){const key=text.slice(0,-1).split(':')[0];n.spec.taints=n.spec.taints.filter(t=>t.key!==key);}else{const m=text.match(/^([^=]+)=([^:]+):(NoSchedule|PreferNoSchedule)$/);if(!m)throw new Error('KEY=VALUE:NoSchedule biçimini kullan.');n.spec.taints=[...n.spec.taints.filter(t=>t.key!==m[1]),{key:m[1],value:m[2],effect:m[3]}];}out=`node/${name} tainted`;}

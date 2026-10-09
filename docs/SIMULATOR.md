@@ -18,8 +18,8 @@ This is a teaching model, not a conformant Kubernetes implementation. Every comm
 | RBAC | namespaced Role/RoleBinding, ServiceAccount subjects, can-i; --as for get/describe/delete | No full authentication, groups, ClusterRole aggregation, API groups, resourceNames or subresource rules |
 | Job / CronJob | finite job template, active workers, completion, schedule/policy declarations, manual Job from CronJob | lab tick completes the teaching job; no cron clock, retry/backoff engine, deadline scheduler or exact-once guarantee |
 | HPA | CPU request utilization ratio, ceiling, min/max and missing-request failure | No metrics scraping, stabilization, tolerance, readiness windows or custom/external metrics |
-| PDB / maintenance | numeric minAvailable check for drain; controlled Pod recreation | No complete eviction API or unhealthy eviction policy; direct delete is not blocked by PDB |
-| NetworkPolicy | selected Pod ingress isolation, union of allowed rules, pod/namespace selectors and numeric ports | No egress, IPBlock, matchExpressions, actual CNI or packet filtering; source-less lab request cannot model every host path |
+| PDB / maintenance | numeric minAvailable check against affected drain candidates; controlled Pod recreation; retained DaemonSet Pods do not spend budget | No complete eviction API or unhealthy eviction policy; direct delete is not blocked by PDB |
+| NetworkPolicy | selected Pod ingress isolation, union of allowed rules, pod/namespace selectors and numeric ports; empty inner from/ports lists match all | No egress, IPBlock, matchExpressions, actual CNI or packet filtering; source-less lab request cannot model every host path |
 | Ingress / TLS | API object, host/path/backend/TLS references | No controller, DNS, certificate validation, HTTPS or Gateway API execution |
 | Helm | one fixed `./chart` teaching release with Deployment/Service, replicaCount, history, rollback, uninstall | Not a template engine; no arbitrary chart, hooks, dependency download, cluster-wide release storage or chart plugins |
 
@@ -32,6 +32,8 @@ Commands are single invocations. Pipes, redirection, command chaining, arbitrary
 The educational maximum is 12 replicas, not a Kubernetes maximum. A level can have at most 25 editable lab YAML files and each editor document is bounded at 200 KB. The terminal bounds command size, visible transcript and command history. These limits keep accidental input from freezing the visual workbench; they are not a security sandbox for untrusted real-cluster artifacts.
 
 `lab load N` changes a synthetic metric. `lab tick` advances modeled init/Job/HPA behavior, not wall-clock time. `lab request SERVICE` demonstrates one in-cluster HTTP path; it does not send traffic to any remote service. Synthetic Pod `status.ready` and `status.reason` are visualization fields, not real Kubernetes Pod API fields.
+
+Successful `lab request`, container `wget`/`curl`, and local forwarded `curl` commands retain their normal events and add `request: {service, namespace, port, source, status: 200}`. The namespace and port identify the destination Service; source is the client Pod name or null. Failed requests add no success event. Task evaluation can compare these observations without requiring one exact command spelling. The exported `traffic` helper still returns output text; `trafficResult` also returns the normalized observation. Both append a trace to the supplied state, so read-only evaluators should pass a clone.
 
 Readiness, liveness and startup probe declarations are shown, but only explicit teaching success/failure cases are calculated. A liveness failure has a synthetic restart counter advanced with logical steps; no real periodSeconds/failureThreshold timer runs.
 
