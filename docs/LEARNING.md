@@ -49,3 +49,23 @@ The `referenceFiles` field supplies the optional solution and test fixture.
 `applyReferenceEdits` is a pure helper for unit reference solvers, not automatic
 learner behavior. Browser replays use `applyReferenceFiles` to enter and save the
 same content through the real editor before running the reference command.
+
+## Independent incidents and predictions
+
+`createChallenge(kind, seed, locale)` returns a fresh level-shaped scenario for
+`traffic`, `release`, or `configuration`. The seed changes resource names and
+namespace deterministically. `sourceKey` links the attempt to its canonical
+lesson; `key` includes the challenge kind and seed so attempts stay separate. Seeds
+range from 0 to 2147483647. Reuse the seed to reproduce an
+attempt or restore it after a page reload.
+
+Render the challenge's own `guide`, not the original lesson guide: its initial
+text provides symptoms and acceptance criteria without the diagnosis. Hints and
+`solutionCommands` are optional. One semantic goal accepts equivalent repair
+orders and HTTP clients, but requires the intended source client and a working
+final state. Show the localized `debrief` only after completion.
+
+`predictionFor(levelOrKey, locale)` provides optional pre-run checks for Pod
+replacement, environment snapshots and readiness. They have no effect on task
+completion or XP. Their purpose is to compare an expected consequence with the
+state the learner observes after running the command.

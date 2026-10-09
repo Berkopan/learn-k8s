@@ -2,6 +2,8 @@ import {parseAllDocuments} from 'yaml';
 import {copy} from './model.js';
 import {find, objects} from './engine.js';
 import {apiCan, traffic} from './simulator-core.js';
+export {createChallenge, challengeKinds} from './curriculum/challenges.js';
+export {predictionFor} from './curriculum/predictions.js';
 
 const missing = (code, message, ...values) => ({code, message, values});
 

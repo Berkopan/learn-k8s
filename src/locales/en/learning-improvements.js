@@ -1,4 +1,7 @@
 export default {
+  'Erişim kesintisi': 'Application access failure',
+  'Yayın sonrası kesinti': 'Failure after a release',
+  'Başlamayan uygulama': 'Application startup failure',
   '{0} kimliğiyle, {1} namespace’inde yeniden doğrula.': 'Verify again as {0} in the {1} namespace.',
   '{0}:{1} için bu adımda başarılı bir istek gözlemi gerekiyor.': 'This step needs a new successful request to {0}:{1}.',
   'Bu adım için yeni bir gözlem gerekiyor: {0}.': 'This step needs a new observation: {0}.',
