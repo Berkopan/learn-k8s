@@ -25,11 +25,15 @@ jobs:
       KIND_NODE_IMAGE: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
       KUBECTL_VERSION: v1.35.0
       KIND_EXPERIMENTAL_PROVIDER: docker
-      KUBECONFIG: ${{ runner.temp }}/learn-k8s-kubeconfig
     defaults:
       run:
         shell: bash
     steps:
+      - name: Set the isolated kubeconfig path
+        # The runner context is unavailable in jobs.<job_id>.env.
+        # https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability
+        run: |
+          printf 'KUBECONFIG=%s/learn-k8s-kubeconfig\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Check out the tested revision
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

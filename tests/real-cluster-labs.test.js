@@ -94,6 +94,26 @@ test('real-cluster smoke and workflow shell blocks have valid syntax',()=>{
   }
 });
 
+test('real-cluster CI publishes the runner kubeconfig path before cluster steps',()=>{
+  const workflow=manifests(resolve('.github/workflows/real-cluster-labs.yml'))[0];
+  const job=workflow.jobs['kind-smoke'];
+  // GitHub rejects this context at job scope before it can start a runner.
+  for(const value of Object.values(job.env||{}))assert.doesNotMatch(String(value),/\$\{\{\s*runner\b/);
+  const setupIndex=job.steps.findIndex(step=>step.run?.includes('$GITHUB_ENV')&&step.run.includes('KUBECONFIG='));
+  const clusterIndex=job.steps.findIndex(step=>step.run?.includes('kind create cluster'));
+  assert.ok(setupIndex>=0&&setupIndex<clusterIndex);
+  const temporary=mkdtempSync(join(tmpdir(),'learn-k8s-runner-env-'));
+  try{
+    const environmentFile=join(temporary,'environment');
+    const runnerTemporary=join(temporary,'runner temp');
+    writeFileSync(environmentFile,'');
+    const result=spawnSync('bash',['-e'],{input:job.steps[setupIndex].run,encoding:'utf8',env:{...process.env,
+      RUNNER_TEMP:runnerTemporary,GITHUB_ENV:environmentFile}});
+    assert.equal(result.status,0,result.stderr||result.error);
+    assert.equal(readFileSync(environmentFile,'utf8'),`KUBECONFIG=${runnerTemporary}/learn-k8s-kubeconfig\n`);
+  }finally{rmSync(temporary,{recursive:true,force:true});}
+});
+
 test('real-cluster smoke rejects local, shared-kubeconfig and wrong-context invocations before cluster writes',()=>{
   const temporary=mkdtempSync(join(tmpdir(),'learn-k8s-smoke-guard-'));
   try{
