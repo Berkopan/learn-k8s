@@ -18,8 +18,10 @@ function execute(s,q){
     else if(a[0]==='request'){const response=trafficResult(s,a[1],ns);out=response.output;event.request=response.request;}
     else if(a[0]==='tick'){
       s.ticks++;
-      for(const p of objects(s,'Pod')){p._sim.initDone=true;if(p._sim.owner?.startsWith('Job/'))p._sim.complete=true;}
-      for(const j of objects(s,'Job'))j._sim.complete=true;
+      for(const p of objects(s,'Pod')){
+        if(p.status?.reason?.startsWith('Init:'))p._sim.initDone=true;
+        else if(p._sim.owner?.startsWith('Job/')&&p.status?.phase==='Running'&&p.status.reason==='Running')p._sim.complete=true;
+      }
       for(const h of objects(s,'HorizontalPodAutoscaler')){const d=ensure(s,'Deployment',h.spec.scaleTargetRef.name,h.metadata.namespace),target=h.spec.metrics?.[0]?.resource?.target?.averageUtilization||60;if(!(d.spec.template.spec.containers||[]).every(c=>c.resources?.requests?.cpu)){h.status={conditions:[{type:'ScalingActive',status:'False',reason:'FailedGetResourceMetric'}]};pushTrace(s,'HPA','CPU request eksik; utilization hesaplanamaz.','error');continue;}const desired=Math.min(h.spec.maxReplicas,Math.max(h.spec.minReplicas||1,Math.ceil((d.spec.replicas||1)*s.load/target)));d.spec.replicas=desired;h.status={currentCPUUtilizationPercentage:s.load,desiredReplicas:desired};pushTrace(s,'HPA',`ceil(current × ${s.load}/${target}) → ${desired} replica`);}
       out=`Simülasyon adımı ${s.ticks}: init/Job/HPA denetleyicileri ilerletildi. Gerçek zaman geçmedi.`;
     }else throw new Error('LAB komutu bulunamadı. help kullan.');reconcile(s);return {out,event};
@@ -170,7 +172,7 @@ function execute(s,q){
     n.spec.unschedulable=verb!=='uncordon';out=`node/${a[0]} ${verb==='drain'?'drained':verb==='cordon'?'cordoned':'uncordoned'}`;
   }
   else if(verb==='taint'){const {kind,name}=resourceArgs(a);if(kind!=='Node')throw new Error('Node gerekli.');const n=ensure(s,kind,name),text=a.at(-1);event={...event,kind,name};if(text.endsWith('-')){const key=text.slice(0,-1).split(':')[0];n.spec.taints=n.spec.taints.filter(t=>t.key!==key);}else{const m=text.match(/^([^=]+)=([^:]+):(NoSchedule|PreferNoSchedule)$/);if(!m)throw new Error('KEY=VALUE:NoSchedule biçimini kullan.');n.spec.taints=[...n.spec.taints.filter(t=>t.key!==m[1]),{key:m[1],value:m[2],effect:m[3]}];}out=`node/${name} tainted`;}
-  else if(verb==='wait'){const {kind,name}=resourceArgs(a),r=ensure(s,kind,name,ns),condition=String(f.for||'').replace('condition=','').toLowerCase();const ok=condition==='ready'?r.status?.ready:condition==='available'?(r.status?.availableReplicas||0)>0:condition==='complete'?(r.status?.succeeded||0)>0:false;if(!ok)throw new Error(`Timeout (simulated): ${kind}/${name} ${condition} koşulu henüz sağlanmıyor.`);event={...event,kind,name,condition};out=`${kind}/${name} condition met`;}
+  else if(verb==='wait'){const {kind,name}=resourceArgs(a),r=ensure(s,kind,name,ns),condition=String(f.for||'').replace('condition=','').toLowerCase();const ok=condition==='ready'?r.status?.ready:condition==='available'?(r.status?.availableReplicas||0)>0:condition==='complete'?(r.status?.conditions||[]).some(c=>c.type==='Complete'&&c.status==='True'):false;if(!ok)throw new Error(`Timeout (simulated): ${kind}/${name} ${condition} koşulu henüz sağlanmıyor.`);event={...event,kind,name,condition};out=`${kind}/${name} condition met`;}
   else throw new Error(`kubectl ${verb}: bu simülatörde desteklenmiyor. help ile desteklenen komutları gör.`);
   if(!f['dry-run']||f['dry-run']==='none')reconcile(s);return {out,event};
 }

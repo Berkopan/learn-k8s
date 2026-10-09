@@ -114,6 +114,10 @@ function validate(s,r) {
   if(['Deployment','StatefulSet','ReplicaSet'].includes(r.kind)){count(r.spec?.replicas??1);if(!r.spec?.selector?.matchLabels||!r.spec?.template?.spec?.containers?.length)throw new Error('Workload selector.matchLabels ve template.spec.containers gerektirir.');if(!matches(r.spec.template.metadata?.labels,r.spec.selector.matchLabels))throw new Error('selector, Pod template etiketleriyle eşleşmiyor.');}
   const cs=r.spec?.containers||r.spec?.template?.spec?.containers||[];
   if(r.kind==='Pod'&&!cs.length)throw new Error('Pod en az bir container gerektirir.');
+  if(r.kind==='Job'){
+    count(r.spec?.parallelism??1,'Job parallelism');count(r.spec?.completions??1,'Job completions');
+    if(!cs.length)throw new Error('Job template en az bir container gerektirir.');
+  }
   for(const c of cs){if(!c.name||!c.image)throw new Error('Container name ve image gerektirir.');for(const key of ['cpu','memory']){const a=quantity(c.resources?.requests?.[key],key==='cpu'),b=quantity(c.resources?.limits?.[key],key==='cpu');if(!Number.isFinite(a)||!Number.isFinite(b)||a<0||b<0)throw new Error('Geçersiz kaynak miktarı.');if(b&&a>b)throw new Error(`${key} request, limit değerini aşamaz.`);}}
   if(r.kind==='HorizontalPodAutoscaler'&&(!Number.isInteger(r.spec?.minReplicas)||!Number.isInteger(r.spec?.maxReplicas)||r.spec.minReplicas<1||r.spec.maxReplicas>12||r.spec.maxReplicas<r.spec.minReplicas))throw new Error('HPA min/max: 1–12 sınırlarında geçerli tamsayılar gerekli.');
   if(r.kind==='ResourceQuota'&&Object.keys(r.spec?.hard||{}).some(k=>k!=='pods'))throw new Error('Bu simülatör ResourceQuota içinde yalnız pods sınırını modeller.');
@@ -176,6 +180,11 @@ export function schedulingChecks(s,p){
 }
 function podStatus(s,p) {
   p._sim ||= {};
+  if(p._sim.complete&&p._sim.everStarted){
+    p.status={...p.status,phase:'Succeeded',reason:'Succeeded',ready:false};
+    p._sim.message='Örnek işçi başarıyla tamamlandı.';
+    return;
+  }
   const containers=p.spec.containers||[];
   const images=JSON.stringify(containers.map(c=>[c.name,c.image]));
   if(p._sim.images!==undefined&&p._sim.images!==images){delete p._sim.envSnapshot;delete p._sim.environments;}
@@ -198,7 +207,6 @@ function podStatus(s,p) {
     else if(p._sim.failure){reason=p._sim.failure;ready=false;}
     else if(livenessBroken){reason='CrashLoopBackOff';ready=false;p._sim.restarts=Math.max(p._sim.restarts||0,1+s.ticks);p._sim.livenessTick=s.ticks;p._sim.message='Liveness HTTP /broken yanıtı 404; kubelet container yeniden başlatıyor.';}
     else if(containers.some(c=>c.readinessProbe?.httpGet?.path==='/broken')){ready=false;p._sim.message='Readiness başarısız: Running, fakat Service endpoint listesinde değil.';}
-    else if(p._sim.complete){reason='Succeeded';ready=false;}
     else{p._sim.message='Container çalışıyor; readiness koşulu başarılı.';}
   }
   const starts=['Running','CrashLoopBackOff','Succeeded'].includes(reason);
@@ -217,15 +225,30 @@ function reconcile(s) {
     if(find(s,'StorageClass',pvc.spec.storageClassName)){pvc.status={phase:'Bound'};pvc.spec.volumeName||=`pv-${pvc.metadata.name}-${pvc._sim?.id||0}`;if(!find(s,'PersistentVolume',pvc.spec.volumeName)){put(s,object('PersistentVolume',pvc.spec.volumeName,{capacity:{storage:pvc.spec.resources.requests.storage},accessModes:pvc.spec.accessModes,storageClassName:pvc.spec.storageClassName,persistentVolumeReclaimPolicy:'Retain',claimRef:{name:pvc.metadata.name,namespace:pvc.metadata.namespace},csi:{driver:'learn-k8s.local',volumeHandle:pvc.spec.volumeName}},{status:{phase:'Bound'}}));pushTrace(s,'CSI provisioner',`${pvc.metadata.name} → ${pvc.spec.volumeName}`);}}else pvc.status={phase:'Pending'};
   }
   const controllers=s.objects.filter(r=>['Deployment','StatefulSet','DaemonSet','Job'].includes(r.kind));
-  for(const d of controllers){d._sim||={};const ns=d.metadata.namespace, name=d.metadata.name;let n=d.kind==='DaemonSet'?objects(s,'Node').length:d.kind==='Job'?(d._sim.complete?0:Number(d.spec.parallelism||1)):Number(d.spec.replicas??1);n=Math.min(n,12);
+  for(const d of controllers){
+    d._sim||={};const ns=d.metadata.namespace,name=d.metadata.name;
+    const controlled=()=>objects(s,'Pod',ns).filter(p=>p._sim?.owner===`${d.kind}/${name}`);
+    let n;
+    if(d.kind==='Job'){
+      // Count each completed worker once, even when completed Pods are later
+      // deleted. A blocked worker never becomes a successful completion.
+      d._sim.succeeded??=0;
+      for(const p of controlled()){
+        podStatus(s,p);
+        if(p.status.phase==='Succeeded'&&!p._sim.successCounted){p._sim.successCounted=true;d._sim.succeeded++;}
+      }
+      const completions=Number(d.spec.completions??1);
+      d._sim.complete=d._sim.succeeded>=completions;
+      n=Math.min(Number(d.spec.parallelism??1),Math.max(0,completions-d._sim.succeeded));
+    }else n=d.kind==='DaemonSet'?objects(s,'Node').length:Number(d.spec.replicas??1);
+    n=Math.min(n,12);
     const fingerprint=JSON.stringify(d.spec.template);if(d._sim.fingerprint!==fingerprint){d._sim.revision=(d._sim.revision||0)+1;d._sim.fingerprint=fingerprint;d._sim.history||=[];d._sim.history.push({revision:d._sim.revision,template:copy(d.spec.template)});pushTrace(s,'Controller',`${d.kind}/${name}: revision ${d._sim.revision}`);}
     if(d.kind==='Deployment'){
       for(const rs of objects(s,'ReplicaSet',ns).filter(r=>r._sim?.owner===name))rs.spec.replicas=0;
       const rsName=`${name}-r${d._sim.revision}`;let rs=find(s,'ReplicaSet',rsName,ns);if(!rs){rs=object('ReplicaSet',rsName,{replicas:n,selector:d.spec.selector,template:copy(d.spec.template)},{metadata:meta(rsName,ns,{app:name}),_sim:{owner:name}});s.objects.push(rs);}rs.spec.replicas=n;
     }
-    const controlled=()=>objects(s,'Pod',ns).filter(p=>p._sim?.owner===`${d.kind}/${name}`);
     let current=controlled().filter(p=>p._sim.revision===d._sim.revision);
-    while(current.filter(p=>p.status?.phase!=='Succeeded').length<n){
+    while(current.filter(occupiesNode).length<n){
       const quota=objects(s,'ResourceQuota',ns).find(q=>q.spec?.hard?.pods!==undefined&&objects(s,'Pod',ns).filter(p=>!['Succeeded','Failed'].includes(p.status?.phase)).length>=Number(q.spec.hard.pods));if(quota){d._sim.message=`FailedCreate: exceeded quota ${quota.metadata.name}`;pushTrace(s,'Controller',d._sim.message,'error');break;}
       const id=++s.serial;const index=d.kind==='StatefulSet'?Array.from({length:12},(_,i)=>i).find(i=>!current.some(p=>p.metadata.name===`${name}-${i}`)):current.length;
       const podName=d.kind==='StatefulSet'?`${name}-${index}`:d.kind==='DaemonSet'?`${name}-worker-${index+1}`:`${name}-r${d._sim.revision}-${id}`;
@@ -235,10 +258,14 @@ function reconcile(s) {
       s.objects.push(p);current.push(p);pushTrace(s,'Controller',`${podName} oluşturuldu.`, 'add');
     }
     while(current.length>n && d.kind!=='Job'){const p=current.pop();s.objects.splice(s.objects.indexOf(p),1);pushTrace(s,'Controller',`${p.metadata.name} kaldırıldı.`, 'remove');}
+    if(d.kind==='Job'){
+      const active=current.filter(occupiesNode);
+      while(active.length>n){const p=active.pop();current=current.filter(q=>q!==p);s.objects.splice(s.objects.indexOf(p),1);pushTrace(s,'Controller',`${p.metadata.name} kaldırıldı.`, 'remove');}
+    }
     current.forEach(p=>podStatus(s,p));const ready=current.filter(p=>p.status.ready).length;
     if(ready>=n||d.kind!=='Deployment')for(const old of controlled().filter(p=>p._sim.revision!==d._sim.revision))s.objects.splice(s.objects.indexOf(old),1);
     if(d.kind==='Deployment')for(const rs of objects(s,'ReplicaSet',ns).filter(r=>r._sim?.owner===name)){rs.status={replicas:controlled().filter(p=>p._sim.revision===Number(rs.metadata.name.split('-r').pop())).length};if(rs.metadata.name!==`${name}-r${d._sim.revision}`)rs.spec.replicas=rs.status.replicas;}
-    d.status=d.kind==='Job'?{active:d._sim.complete?0:n,succeeded:d._sim.complete?Number(d.spec.completions||1):0,conditions:d._sim.complete?[{type:'Complete',status:'True'}]:[]}:{replicas:controlled().length,readyReplicas:controlled().filter(p=>p.status?.ready).length,updatedReplicas:current.length,availableReplicas:controlled().filter(p=>p.status?.ready).length};
+    d.status=d.kind==='Job'?{active:controlled().filter(occupiesNode).length,succeeded:d._sim.succeeded,conditions:d._sim.complete?[{type:'Complete',status:'True'}]:[]}:{replicas:controlled().length,readyReplicas:controlled().filter(p=>p.status?.ready).length,updatedReplicas:current.length,availableReplicas:controlled().filter(p=>p.status?.ready).length};
   }
   objects(s,'Pod').forEach(p=>podStatus(s,p));
   s.objects=s.objects.filter(r=>r.kind!=='EndpointSlice');

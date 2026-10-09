@@ -8,5 +8,7 @@ export default {
   '--from yalnız configmap/NAME veya secret/NAME kabul eder.': '--from accepts only configmap/NAME or secret/NAME.',
   'En az bir ortam değişkeni gerekli.': 'At least one environment variable is required.',
   'Gerekli ConfigMap veya Secret kaynağı ya da anahtarı bulunamadı.': 'A required ConfigMap or Secret resource or key is missing.',
-  'Service adı gerekli. lab request SERVICE[:PORT] kullan.': 'A Service name is required. Use lab request SERVICE[:PORT].'
+  'Service adı gerekli. lab request SERVICE[:PORT] kullan.': 'A Service name is required. Use lab request SERVICE[:PORT].',
+  'Job template en az bir container gerektirir.': 'A Job template requires at least one container.',
+  'Örnek işçi başarıyla tamamlandı.': 'The example worker completed successfully.'
 };
