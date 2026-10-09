@@ -1,4 +1,5 @@
 import {object, pod, deployment, service, config, secret, job, cron, claim, stateful, daemon, container, copy, meta} from '../model.js';
+import {KEY_TO_LEGACY_ID} from './legacy.js';
 
 export const CURRICULUM_VERSION = 1;
 export const K='https://kubernetes.io/docs/';
@@ -171,10 +172,11 @@ export const syntaxClue=command=>{
 
 export const S=(text,command,goal,hint,syntaxHint)=>({text,command,goal,hint:hint||'',syntaxHint:syntaxHint||''});
 export const levels=[];
-export function L(module,title,concept,mechanism,caution,steps,extra={}) {
+export function L(key,module,title,concept,mechanism,caution,steps,extra={}) {
+  if (!/^[a-z][a-z0-9.-]+$/.test(key) || levels.some(level => level.key === key)) throw new Error(`Invalid or duplicate lesson key: ${key}`);
   const id=levels.length+1;
   const contextualSteps=steps.map((step,index)=>({...step,hint:step.hint||contextualHint(title,step,index),syntaxHint:step.syntaxHint||syntaxClue(step.command)}));
-  levels.push({id,module,title,concept,mechanism,caution,steps:contextualSteps,seed:[],files:{},xp:40+Math.floor(module/4)*10+(id%8===0?40:0),minutes:steps.length+3,difficulty:module<4?'Temel':module<12?'Uygulama':'Saha',source:modules[module].source,...extra});
+  levels.push({id,key,legacyId:KEY_TO_LEGACY_ID[key],module,title,concept,mechanism,caution,steps:contextualSteps,seed:[],files:{},xp:40+Math.floor(module/4)*10+(id%8===0?40:0),minutes:steps.length+3,difficulty:module<4?'Temel':module<12?'Uygulama':'Saha',source:modules[module].source,...extra});
 }
 export const web=()=>deployment('web',2);
 export const client=()=>pod('client',{containers:[{name:'client',image:'busybox:1.37',command:['sleep','3600']}]},{app:'client'});

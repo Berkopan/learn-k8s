@@ -38,7 +38,7 @@ export function localizedCurriculum(locale = getLanguage()) {
     syntax: index === 15 ? 'Observe → form a hypothesis → correct → verify' : module.syntax,
   }));
   const levels = sourceLevels.map(level => {
-    const translated = englishLessons[level.id];
+    const translated = englishLessons[level.legacyId ?? level.id];
     if (!translated || translated.steps.length !== level.steps.length) {
       throw new Error(`Incomplete English lesson ${level.id}`);
     }
@@ -58,7 +58,9 @@ export function localizedCurriculum(locale = getLanguage()) {
   return result;
 }
 export function localizedGuide(id, locale = getLanguage()) {
-  return locale === 'en' ? englishLessons[id] : guides[id];
+  const level = typeof id === 'object' ? id : sourceLevels.find(item => typeof id === 'string' ? item.key === id : item.id === id);
+  const contentId = level?.legacyId ?? level?.id ?? id;
+  return locale === 'en' ? englishLessons[contentId] : guides[contentId];
 }
 export function localizedReference(locale = getLanguage()) {
   const english = locale === 'en';
