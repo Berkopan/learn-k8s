@@ -69,7 +69,7 @@ test('initial theme follows the OS until the user makes an explicit choice',asyn
 });
 test('theme and atlas navigation preserve lab state, terminal draft and unsaved YAML',async({page})=>{
  await freeLab(page);const input=page.locator('#terminal-input');await input.fill('kubectl get pods');await input.press('Enter');
- await input.fill('kubectl describe pod ');const progress=await page.evaluate(()=>localStorage.getItem('learn-k8s:progress:v1'));
+ await input.fill('kubectl describe pod ');const progress=await page.evaluate(()=>localStorage.getItem('learn-k8s:progress:v2'));
  await page.getByRole('tab',{name:/Dosyalar/}).click();await page.getByRole('button',{name:'+ Dosya oluştur'}).click();
  const yaml='apiVersion: v1\nkind: Pod\nmetadata:\n  name: still-a-draft\n';await page.getByLabel('YAML düzenleyici').fill(yaml);
  for(const label of ['Aydınlık tema','Karanlık tema']){await page.getByRole('button',{name:label,exact:true}).click();await expect(page.getByLabel('YAML düzenleyici')).toHaveValue(yaml);}
@@ -78,7 +78,7 @@ test('theme and atlas navigation preserve lab state, terminal draft and unsaved 
  await expect(page.getByLabel('YAML düzenleyici')).toHaveValue(yaml);
  await page.getByRole('tab',{name:'Terminal',exact:true}).click();await expect(input).toHaveValue('kubectl describe pod ');
  await expect(page.locator('.pod-card')).toHaveCount(2);await expect(page.locator('.terminal-output')).toContainText('kubectl get pods');
- expect(await page.evaluate(()=>localStorage.getItem('learn-k8s:progress:v1'))).toBe(progress);
+ expect(await page.evaluate(()=>localStorage.getItem('learn-k8s:progress:v2'))).toBe(progress);
 });
 test('themes remain usable when local storage is denied',async({page})=>{
  await page.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Blocked','SecurityError');}}));

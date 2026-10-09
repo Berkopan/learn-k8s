@@ -5,7 +5,7 @@ import {localizedCurriculum,localizedGuide,localizedReference} from '../../src/l
 
 // Legacy test files explicitly use tr-TR; this suite exercises real English negotiation.
 test.use({locale:'en-US'});
-const key='learn-k8s:progress:v1';
+const key='learn-k8s:progress:v2';
 const languageKey='learn-k8s:language:v1';
 const english=localizedCurriculum('en');
 const picker=page=>page.locator('.language-switch select');

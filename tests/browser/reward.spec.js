@@ -6,7 +6,7 @@ import {quizzes} from '../../src/reference.js';
 // Video changes worker configuration, so Playwright requires file-level scope.
 test.use({video: 'on'});
 test.setTimeout(25000);
-const progressKey = 'learn-k8s:progress:v1';
+const progressKey = 'learn-k8s:progress:v2';
 async function openLab(page, {id = 1, reduced = false, systemReduced = false, theme = 'dark', clock = false} = {}) {
   await page.emulateMedia({reducedMotion: systemReduced ? 'reduce' : 'no-preference'});
   if (clock) await page.clock.install({time: new Date('2026-10-01T20:00:00Z')});
