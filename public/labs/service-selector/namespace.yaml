@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: learn-k8s-service-selector
+  labels:
+    app.kubernetes.io/part-of: learn-k8s
+    learn-k8s.io/lab: service-selector
