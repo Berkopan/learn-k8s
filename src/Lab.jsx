@@ -1,10 +1,10 @@
 import {t} from './i18n.js';
 import {runtimeText,terminalOutput} from './runtime-text.js';
 import {contextDockerSuggestions} from './command-help.js';
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import {stringify} from 'yaml';
-import {fileDraft,updateFileDraft,parseManifestDraft,commandCompletions} from './workbench.js';
+import {fileDraft,updateFileDraft,parseManifestDraft,commandCompletions,stateChanges,resourceDiagnostics} from './workbench.js';
 import {objects,quantity,suggestionWords} from './engine.js';
 import {Icon} from './icons.jsx';
 import {IconButton,Modal,Status,download} from './ui.jsx';
@@ -76,6 +76,51 @@ export function Cluster({state,level,traceIndex,sequence,inspect}){
 }
 function PodCard({pod:p,inspect}){return <button className={`pod-card pop ${p.status.ready?'ready':'not-ready'}`} onClick={()=>inspect(p)} title={`${p.metadata.name} · ${p.status.reason}`}><span className="pod-dot"/><div><b>{p.metadata.name}</b><small>{p.status.reason}{!p.status.ready&&p.status.reason==='Running'?' · NotReady':''}</small></div><span className="pod-count">{p.status.ready?p.spec.containers.length:0}/{p.spec.containers.length}</span></button>;}
 export function Trace({state,index,setIndex,playing,setPlaying,speed,setSpeed}){return <div className="trace-panel"><div className="trace-heading"><div><span className="eyebrow">{t('OLAY AKIŞI')}</span><small>{state.trace.length?`${index+1} / ${state.trace.length}`:t('Komut bekleniyor')}</small></div><div><IconButton icon={playing?'pause':'play'} label={playing?t('Animasyonu duraklat'):t('Animasyonu oynat')} onClick={()=>setPlaying(!playing)}/><select aria-label={t('Animasyon hızı')} value={speed} onChange={e=>setSpeed(Number(e.target.value))}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option></select><button className="text-button" onClick={()=>setIndex(Math.max(0,state.trace.length-1))}>{t('Sonuca git')}</button></div></div><div className="trace-content" aria-live="off">{state.trace.length?<><span className={`trace-actor ${state.trace[index]?.tone||''}`}>{state.trace[index]?.actor}</span><p>{runtimeText(state.trace[index]?.text)}</p></>:<><span className="trace-actor">{t('Senin sıran')}</span><p>{t('Bir komut çalıştır. API, controller ve node arasındaki adımlar burada görünsün.')}</p></>}</div>{state.trace.length>1&&<input className="trace-range" type="range" min={0} max={state.trace.length-1} value={index} aria-label={t('Olay adımı')} onChange={e=>{setPlaying(false);setIndex(Number(e.target.value));}}/>}</div>;}
+const diffValue=value=>value===undefined?'—':typeof value==='string'?value:JSON.stringify(value);
+function ChangeFields({fields}) {
+ return <div className="change-table-scroll"><table className="change-fields"><thead><tr><th>{t('Alan')}</th><th>{t('Önce')}</th><th>{t('Sonra')}</th></tr></thead><tbody>{fields.slice(0,24).map(field=><tr key={field.path}><th scope="row"><code>{field.path}</code></th><td><code>{diffValue(field.before)}</code></td><td><code>{diffValue(field.after)}</code></td></tr>)}</tbody></table>{fields.length>24&&<p className="fine-print">{t('İlk {0}/{1} alan gösteriliyor. Tam nesne için kaynak ayrıntısını aç.',[24,fields.length])}</p>}</div>;
+}
+export function CommandChanges({previousState,state,command}) {
+ const changes=useMemo(()=>stateChanges(previousState,state),[previousState,state]);
+ if(!changes)return null;
+ const total=changes.resources.length+changes.context.length;
+ const labels={added:t('Eklendi'),removed:t('Silindi'),updated:t('Değişti')};
+ return <details className="command-diff">
+  <summary><span>{t('Ne değişti?')}</span><small>{total?t('{0} kaynak · {1} oturum alanı',[changes.resources.length,changes.context.length]):t('Değişiklik yok')}</small></summary>
+  <div className="command-diff-content" tabIndex={0} role="region" aria-label={t('Kaynak farkları')}>
+   {command&&<code className="diff-command">{command}</code>}
+   {!total&&<p>{t('Bu komut gözlenen kaynak durumunu değiştirmedi.')}</p>}
+   {changes.resources.map(resource=>resource.change==='updated'
+    ?<details className="resource-change" key={resource.key}><summary><span><b>{resource.kind}/{resource.name}</b>{resource.namespace&&<small>{resource.namespace}</small>}</span><em className="change-updated">{labels.updated}</em></summary><ChangeFields fields={resource.fields}/></details>
+    :<div className="resource-change resource-change-line" key={resource.key}><span><b>{resource.kind}/{resource.name}</b>{resource.namespace&&<small>{resource.namespace}</small>}</span><em className={`change-${resource.change}`}>{labels[resource.change]}</em></div>)}
+   {changes.context.length>0&&<section className="session-change"><h3>{t('Oturum')}</h3><ChangeFields fields={changes.context}/></section>}
+  </div>
+ </details>;
+}
+export function ResourceDiagnostics({state,resource}) {
+ const diagnostic=useMemo(()=>state?resourceDiagnostics(state,resource):null,[state,resource]);
+ if(!diagnostic)return null;
+ if(diagnostic.type==='scheduling')return <details className="resource-diagnostics">
+  <summary>{t('Yerleşim kontrolleri')}</summary>
+  {diagnostic.nodes.length?<div className="diagnostic-scroll" tabIndex={0}><table><thead><tr><th>Node</th><th>{t('Gözlenen engeller')}</th></tr></thead><tbody>{diagnostic.nodes.map(node=>{
+   const reasons=[];
+   if(node.unschedulable)reasons.push(t('Cordon: yeni Pod kabul etmiyor.'));
+   if(!node.selectorMatches)reasons.push(t('nodeSelector eşleşmiyor.'));
+   if(!node.toleratesTaints)reasons.push(t('Taint için toleration eksik.'));
+   if(node.requested.cpu>node.available.cpu)reasons.push(t('CPU request {0}m; kullanılabilir {1}m.',[node.requested.cpu,node.available.cpu]));
+   if(node.requested.memory>node.available.memory)reasons.push(t('Bellek request {0} MiB; kullanılabilir {1} MiB.',[node.requested.memory,node.available.memory]));
+   return <tr key={node.node}><th scope="row"><code>{node.node}</code></th><td>{reasons.length?<ul>{reasons.map(reason=><li key={reason}>{reason}</li>)}</ul>:t('Bu modelde yerleşim için uygun.')}</td></tr>;
+  })}</tbody></table></div>:<p>{t('Kümede node yok.')}</p>}
+ </details>;
+ return <details className="resource-diagnostics service-diagnostics">
+  <summary>{t('Service yolu')}</summary>
+  <div className="diagnostic-selector"><span>namespace: <code>{diagnostic.namespace}</code></span><span>selector: <code>{diagnostic.selector?Object.entries(diagnostic.selector).map(([key,value])=>`${key}=${value}`).join(', ')||'{}':t('Tanımlı değil')}</code></span></div>
+  {!diagnostic.selector?<p>{t('Selector tanımlı değil; otomatik endpoint seçimi yok.')}</p>:diagnostic.pods.length?<div className="diagnostic-scroll" tabIndex={0}><table><thead><tr><th>Pod</th><th>Readiness</th><th>EndpointSlice</th></tr></thead><tbody>{diagnostic.pods.map(pod=><tr key={pod.name}><th scope="row"><code>{pod.name}</code></th><td>{pod.ready?t('Hazır'):t('Hazır değil')}<small>{pod.reason}</small></td><td>{pod.endpoint?t('Listede'):t('Listede değil')}</td></tr>)}</tbody></table></div>:<p>{t('Bu namespace’te selector ile eşleşen Pod yok.')}</p>}
+  {diagnostic.ports.length>0&&<section className="diagnostic-ports"><h3>{t('Port bildirimleri')}</h3>{diagnostic.ports.map((port,index)=><div key={index}><code>Service {port.port} → targetPort {port.targetPort}</code>{port.declarations.filter(item=>item.known&&!item.matches).map(item=><p className="diagnostic-issue" key={item.pod}>{t('{0}: targetPort={1} ile eşleşen container port bildirimi yok.',[item.pod,port.targetPort])}</p>)}{port.declarations.filter(item=>!item.known).map(item=><p key={item.pod}>{t('{0}: container port bilgisi bildirilmemiş.',[item.pod])}</p>)}</div>)}</section>}
+  {diagnostic.policies.length>0&&<p>{t('Hedefleri seçen NetworkPolicy: {0}',[diagnostic.policies.join(', ')])}</p>}
+  <p className="fine-print">{t('Ulaşılabilirliği kaynak Pod’dan yapılan istekle doğrula.')}</p>
+ </details>;
+}
 export function FileEditor({state,onFiles,notify,drafts,onDrafts,selectedFile,onSelectedFile}) {
  const names=Object.keys(state.files);
  const [localDrafts,setLocalDrafts]=useState({}),[localSelected,setLocalSelected]=useState(names[0]||'');
@@ -135,13 +180,26 @@ export function FileEditor({state,onFiles,notify,drafts,onDrafts,selectedFile,on
  </div>;
 }
 export function ResourceList({state,inspect}){const [kind,setKind]=useState('all');const kinds=[...new Set(state.objects.map(r=>r.kind))].sort();const rows=state.objects.filter(r=>kind==='all'||r.kind===kind);return <div className="resource-list"><div className="file-toolbar"><select aria-label={t('Kaynak türü filtresi')} value={kind} onChange={e=>setKind(e.target.value)}><option value="all">{t('Bütün kaynaklar')}</option>{kinds.map(k=><option key={k}>{k}</option>)}</select><span>{rows.length} {t('nesne')}</span></div><div className="inventory-scroll"><table><thead><tr><th>{t('Kaynak')}</th><th>{t('Ad / namespace')}</th><th>{t('Durum')}</th></tr></thead><tbody>{rows.map((r,i)=><tr key={i}><td><span className="kind-tag">{r.kind}</span></td><td><button onClick={()=>inspect(r)}>{r.metadata.name}</button><small>{r.metadata.namespace||'cluster-scoped'}</small></td><td>{resourceLabel(r)}</td></tr>)}</tbody></table></div></div>;}
-export function Inspector({resource,onClose}){let clean=resource?structuredClone(resource):null;if(clean)delete clean._sim;return <Modal open={!!resource} onOpenChange={v=>!v&&onClose()} title={resource?`${resource.kind} / ${resource.metadata.name}`:t('Kaynak ayrıntısı')} description={t('Simüle kümenin gözlenen nesnesi. Dahili öğretim alanları gerçek API şeması değildir.')} wide><div className="inspector-body">{resource&&<><div className="inspector-summary"><Status text={resourceLabel(resource)} good={!resource.status||resource.status.ready!==false}/><span>{resource.metadata.namespace||t('Küme kapsamı')}</span><IconButton icon="download" label={t('Nesne YAML dosyasını indir')} onClick={()=>download(`${resource.metadata.name}.yaml`,stringify(clean),'text/yaml')}/></div>{resource._sim?.message&&<p className="inspector-message">{runtimeText(resource._sim.message)}</p>}<pre className="code-block">{stringify(clean)}</pre><p className="fine-print">{t('status.ready / status.reason bu görselleştirmeye ait sadeleştirilmiş alanlardır. Gerçek Pod API’sinde koşullar ve containerStatuses kullanılır.')}</p></>}</div></Modal>;}
-export function Workspace({state,level,sequence,entries,onCommand,command,setCommand,inputRef,history,onFiles,notify,settings,onSetting,drafts,onDrafts,selectedFile,onSelectedFile}){
- const [tab,setTab]=useState('terminal'),[inspect,setInspect]=useState(null),[traceIndex,setTraceIndex]=useState(0),[playing,setPlaying]=useState(true),[infoOpen,setInfoOpen]=useState(false);
+export function Inspector({resource,onClose,state}){let clean=resource?structuredClone(resource):null;if(clean)delete clean._sim;return <Modal open={!!resource} onOpenChange={v=>!v&&onClose()} title={resource?`${resource.kind} / ${resource.metadata.name}`:t('Kaynak ayrıntısı')} description={t('Simüle kümenin gözlenen nesnesi. Dahili öğretim alanları gerçek API şeması değildir.')} wide><div className="inspector-body">{resource&&<><div className="inspector-summary"><Status text={resourceLabel(resource)} good={!resource.status||resource.status.ready!==false}/><span>{resource.metadata.namespace||t('Küme kapsamı')}</span><IconButton icon="download" label={t('Nesne YAML dosyasını indir')} onClick={()=>download(`${resource.metadata.name}.yaml`,stringify(clean),'text/yaml')}/></div>{resource._sim?.message&&<p className="inspector-message">{runtimeText(resource._sim.message)}</p>}<ResourceDiagnostics state={state} resource={resource}/><pre className="code-block">{stringify(clean)}</pre><p className="fine-print">{t('status.ready / status.reason bu görselleştirmeye ait sadeleştirilmiş alanlardır. Gerçek Pod API’sinde koşullar ve containerStatuses kullanılır.')}</p></>}</div></Modal>;}
+export function Workspace({state,level,sequence,entries,onCommand,command,setCommand,inputRef,history,onFiles,notify,settings,onSetting,drafts,onDrafts,selectedFile,onSelectedFile,previousState,activeTask}){
+ const [tab,setTab]=useState('terminal'),[inspect,setInspect]=useState(null),[traceIndex,setTraceIndex]=useState(0),[playing,setPlaying]=useState(true),[infoOpen,setInfoOpen]=useState(false),[topologyOpen,setTopologyOpen]=useState(true);
  const infoRef=useRef(null);
  useEffect(()=>{setTraceIndex(settings.reduced?Math.max(0,state.trace.length-1):0);},[state.trace,settings.reduced]);
  useEffect(()=>{if(!playing||settings.reduced||traceIndex>=state.trace.length-1)return;const id=setTimeout(()=>setTraceIndex(i=>Math.min(i+1,state.trace.length-1)),600/settings.speed);return()=>clearTimeout(id);},[playing,traceIndex,state.trace,settings.speed,settings.reduced]);
  useEffect(()=>{setTab('terminal');setInspect(null);setInfoOpen(false);},[level.id]);
  useEffect(()=>{if(!infoOpen)return;const onPointer=e=>{if(!infoRef.current?.contains(e.target))setInfoOpen(false);};const onKey=e=>{if(e.key==='Escape')setInfoOpen(false);};document.addEventListener('pointerdown',onPointer);document.addEventListener('keydown',onKey);return()=>{document.removeEventListener('pointerdown',onPointer);document.removeEventListener('keydown',onKey);};},[infoOpen]);
- return <section className="workspace" aria-label={t('Canlı laboratuvar ve terminal')}><div className="zone-marker zone-marker-workbench"><span className="workbench-label">02 · WORKBENCH <span className="workbench-info" ref={infoRef}><button className="workbench-info-trigger" type="button" aria-label={t('Gerçek kümede aklında tut')} aria-expanded={infoOpen} aria-controls="real-cluster-note" onClick={()=>setInfoOpen(v=>!v)}><Icon name="info" size={14}/></button>{infoOpen&&<div className="workbench-info-popover" id="real-cluster-note" role="note"><strong>{t('Gerçek kümede')}</strong><p>{level.caution}</p></div>}</span></span><b>{t('Uygula · sonucu izle')}</b></div><div className="workspace-heading"><div><span className="live-dot"/><h2>{t('Canlı laboratuvar')}</h2></div></div><Cluster state={state} level={level} sequence={sequence} traceIndex={traceIndex} inspect={setInspect}/><Trace state={state} index={traceIndex} setIndex={setTraceIndex} playing={playing} setPlaying={setPlaying} speed={settings.speed} setSpeed={v=>onSetting('speed',v)}/><Tabs.Root value={tab} onValueChange={setTab} className="lab-tabs"><Tabs.List className="tab-list" aria-label={t('Laboratuvar araçları')}><Tabs.Trigger value="terminal"><Icon name="terminal" size={16}/>Terminal</Tabs.Trigger><Tabs.Trigger value="files"><Icon name="file" size={16}/>{t('Dosyalar')} <span>{Object.keys(state.files).length}</span></Tabs.Trigger><Tabs.Trigger value="resources"><Icon name="grid" size={16}/>{t('Kaynaklar')} <span>{state.objects.length}</span></Tabs.Trigger></Tabs.List><Tabs.Content value="terminal" forceMount hidden={tab!=='terminal'}><Terminal {...{entries,onCommand,command,setCommand,state,inputRef,history,level}}/></Tabs.Content><Tabs.Content value="files" forceMount hidden={tab!=='files'}><FileEditor {...{state,onFiles,notify,drafts,onDrafts,selectedFile,onSelectedFile}}/></Tabs.Content><Tabs.Content value="resources"><ResourceList state={state} inspect={setInspect}/></Tabs.Content></Tabs.Root><Inspector resource={inspect} onClose={()=>setInspect(null)}/></section>;
+ return <section className="workspace" aria-label={t('Canlı laboratuvar ve terminal')}>
+  <div className="zone-marker zone-marker-workbench"><span className="workbench-label">02 · WORKBENCH <span className="workbench-info" ref={infoRef}><button className="workbench-info-trigger" type="button" aria-label={t('Gerçek kümede aklında tut')} aria-expanded={infoOpen} aria-controls="real-cluster-note" onClick={()=>setInfoOpen(value=>!value)}><Icon name="info" size={14}/></button>{infoOpen&&<div className="workbench-info-popover" id="real-cluster-note" role="note"><strong>{t('Gerçek kümede')}</strong><p>{level.caution}</p></div>}</span></span><b>{t('Uygula · sonucu izle')}</b></div>
+  <div className="workspace-heading"><div><span className="live-dot"/><h2>{t('Canlı laboratuvar')}</h2></div><button type="button" className="text-button topology-toggle" aria-expanded={topologyOpen} aria-controls="workspace-topology" aria-label={topologyOpen?t('Topolojiyi gizle'):t('Topolojiyi göster')} onClick={()=>setTopologyOpen(value=>!value)}>{t('Topoloji')}<Icon name="chevron" size={13}/></button></div>
+  <div id="workspace-topology" hidden={!topologyOpen}><Cluster state={state} level={level} sequence={sequence} traceIndex={traceIndex} inspect={setInspect}/><Trace state={state} index={traceIndex} setIndex={setTraceIndex} playing={playing} setPlaying={setPlaying} speed={settings.speed} setSpeed={value=>onSetting('speed',value)}/></div>
+  <CommandChanges previousState={previousState} state={state} command={entries.at(-1)?.command}/>
+  {activeTask&&<details className="mobile-active-task"><summary><b>{t('Aktif görev')}</b><span>{activeTask}</span></summary><p>{activeTask}</p></details>}
+  <Tabs.Root value={tab} onValueChange={setTab} className="lab-tabs">
+   <Tabs.List className="tab-list" aria-label={t('Laboratuvar araçları')}><Tabs.Trigger value="terminal"><Icon name="terminal" size={16}/>Terminal</Tabs.Trigger><Tabs.Trigger value="files"><Icon name="file" size={16}/>{t('Dosyalar')} <span>{Object.keys(state.files).length}</span></Tabs.Trigger><Tabs.Trigger value="resources"><Icon name="grid" size={16}/>{t('Kaynaklar')} <span>{state.objects.length}</span></Tabs.Trigger></Tabs.List>
+   <Tabs.Content value="terminal" forceMount hidden={tab!=='terminal'}><Terminal {...{entries,onCommand,command,setCommand,state,inputRef,history,level}}/></Tabs.Content>
+   <Tabs.Content value="files" forceMount hidden={tab!=='files'}><FileEditor {...{state,onFiles,notify,drafts,onDrafts,selectedFile,onSelectedFile}}/></Tabs.Content>
+   <Tabs.Content value="resources"><ResourceList state={state} inspect={setInspect}/></Tabs.Content>
+  </Tabs.Root>
+  <Inspector resource={inspect} state={state} onClose={()=>setInspect(null)}/>
+ </section>;
 }

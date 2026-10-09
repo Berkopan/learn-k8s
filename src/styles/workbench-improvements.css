@@ -23,3 +23,82 @@
 @media (pointer: coarse) {
   .terminal-completions > button { min-height: 36px; }
 }
+
+.topology-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.topology-toggle[aria-expanded='true'] > svg { transform: rotate(90deg); }
+#workspace-topology[hidden] { display: none; }
+
+/* A single closed disclosure adds no permanent explanation to the terminal. */
+.command-diff {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 12px;
+}
+.command-diff > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 14px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.command-diff > summary::before { content: '›'; font: 17px var(--sans); }
+.command-diff[open] > summary::before { transform: rotate(90deg); }
+.command-diff > summary > small { margin-left: auto; font-size: 10px; color: var(--muted); }
+.command-diff-content { max-height: 380px; overflow: auto; padding: 0 14px 12px; }
+.diff-command { display: block; padding: 4px 0 10px; color: var(--info); font: 11px/1.5 var(--mono); overflow-wrap: anywhere; }
+.resource-change { border-top: 1px solid var(--line); }
+.resource-change > summary, .resource-change-line { padding: 9px 0; }
+.resource-change > summary { cursor: pointer; }
+.resource-change > summary > span, .resource-change-line > span { display: inline-block; max-width: calc(100% - 76px); vertical-align: top; }
+.resource-change b { font: 11px/1.5 var(--mono); overflow-wrap: anywhere; }
+.resource-change small { display: block; font-size: 10px; color: var(--muted); }
+.resource-change em { float: right; font-style: normal; font-size: 10px; padding-top: 2px; }
+.change-added { color: var(--good); }
+.change-removed { color: var(--bad); }
+.change-updated { color: var(--info); }
+.change-fields { table-layout: fixed; font-size: 11px; }
+.change-fields th, .change-fields td { vertical-align: top; padding: 7px; }
+.change-fields th:first-child { width: 42%; }
+.change-fields code { font: 10px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.session-change h3 { margin-top: 10px; font-size: 12px; font-weight: 600; }
+
+.resource-diagnostics { border: 1px solid var(--line); border-radius: 3px; margin: 12px 0; font-size: 12px; }
+.resource-diagnostics > summary { padding: 11px 12px; cursor: pointer; color: var(--info); }
+.resource-diagnostics > p, .resource-diagnostics > section { margin: 0; padding: 8px 12px; }
+.diagnostic-scroll { overflow: auto; }
+.diagnostic-scroll th, .diagnostic-scroll td { vertical-align: top; font-size: 11px; }
+.diagnostic-scroll th[scope='row'] { color: var(--ink); }
+.diagnostic-scroll code { font: 11px/1.5 var(--mono); overflow-wrap: anywhere; }
+.diagnostic-scroll ul { padding-left: 16px; margin: 0; }
+.diagnostic-scroll li + li { margin-top: 5px; }
+.diagnostic-selector { display: flex; flex-wrap: wrap; gap: 5px 16px; padding: 5px 12px 10px; color: var(--muted); }
+.diagnostic-selector code { color: var(--ink); overflow-wrap: anywhere; }
+.diagnostic-ports h3 { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 7px; }
+.diagnostic-ports > div + div { margin-top: 10px; }
+.diagnostic-ports code { font: 11px/1.5 var(--mono); overflow-wrap: anywhere; }
+.diagnostic-ports p { margin-top: 4px; font-size: 11px; }
+.diagnostic-issue { color: var(--bad); }
+
+.mobile-active-task { display: none; }
+@media (max-width: 980px) {
+  .mobile-active-task { display: block; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .mobile-active-task > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 13px; cursor: pointer; }
+  .mobile-active-task > summary::before { content: '›'; color: var(--accent); }
+  .mobile-active-task[open] > summary::before { transform: rotate(90deg); }
+  .mobile-active-task > summary > b { flex-shrink: 0; font-size: 11px; color: var(--accent); }
+  .mobile-active-task > summary > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; color: var(--muted); }
+  .mobile-active-task[open] > summary > span { display: none; }
+  .mobile-active-task > p { padding: 0 13px 13px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+  .command-diff > summary { min-height: 42px; }
+  .topology-toggle { min-height: 40px; }
+}

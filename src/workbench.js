@@ -1,5 +1,5 @@
 import {parseAllDocuments, stringify} from 'yaml';
-import {aliases} from './simulator-core.js';
+import {aliases, matches, schedulingChecks} from './simulator-core.js';
 
 /** Editor drafts are separate from the parsed manifests used by kubectl apply. */
 export function manifestText(file) {
@@ -186,4 +186,95 @@ export function commandCompletions(input, state, fallback = []) {
     return kinds.includes(kind) ? words(namesFor(kind)) : [];
   }
   return [];
+}
+
+const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/** Compare public resource fields; simulator bookkeeping is never a user diff. */
+export function changedFields(before, after, path = '') {
+  if (Object.is(before, after)) return [];
+  if (isRecord(before) && isRecord(after)) {
+    return [...new Set([...Object.keys(before), ...Object.keys(after)])].sort().flatMap(key =>
+      changedFields(before[key], after[key], path ? `${path}.${key}` : key));
+  }
+  if (Array.isArray(before) && Array.isArray(after)) {
+    return Array.from({length: Math.max(before.length, after.length)}, (_, index) => index).flatMap(index =>
+      changedFields(before[index], after[index], `${path}[${index}]`));
+  }
+  return [{path, before, after}];
+}
+
+function observedResources(state, includeReleases = true) {
+  const resources = (state.objects || []).map(resource => {
+    const {_sim, ...observed} = resource;
+    return observed;
+  });
+  // Docker inventory changes matter in the first module, before Pod lessons.
+  for (const image of state.docker?.images || []) {
+    resources.push({kind: 'DockerImage', metadata: {name: image}});
+  }
+  for (const container of state.docker?.containers || []) {
+    resources.push({kind: 'DockerContainer', metadata: {name: container.name}, spec: {image: container.image}, status: {phase: container.status}});
+  }
+  for (const release of includeReleases ? state.releases || [] : []) {
+    resources.push({kind: 'HelmRelease', metadata: {name: release.name}, revisions: release.revisions});
+  }
+  return resources;
+}
+
+export function stateChanges(previous, current) {
+  if (!previous) return null;
+  const keyFor = resource => `${resource.kind}/${resource.metadata?.namespace || ''}/${resource.metadata?.name || ''}`;
+  const includeReleases = Array.isArray(previous.releases);
+  const before = new Map(observedResources(previous, includeReleases).map(resource => [keyFor(resource), resource]));
+  const after = new Map(observedResources(current, includeReleases).map(resource => [keyFor(resource), resource]));
+  const resources = [];
+  for (const key of [...new Set([...before.keys(), ...after.keys()])].sort()) {
+    const old = before.get(key), next = after.get(key), resource = next || old;
+    const change = !old ? 'added' : !next ? 'removed' : 'updated';
+    const fields = old && next ? changedFields(old, next) : [];
+    if (change === 'updated' && !fields.length) continue;
+    resources.push({key, kind: resource.kind, name: resource.metadata.name,
+      namespace: resource.metadata.namespace || '', change, fields});
+  }
+  const context = ['namespace', 'context', 'load', 'ticks'].filter(key => Object.hasOwn(previous, key) && !Object.is(previous[key], current[key]))
+    .map(key => ({path: key, before: previous[key], after: current[key]}));
+  return {resources, context, added: resources.filter(item => item.change === 'added').length,
+    removed: resources.filter(item => item.change === 'removed').length,
+    updated: resources.filter(item => item.change === 'updated').length};
+}
+
+/** Read-only observations, using the very same placement rules as the scheduler. */
+export function resourceDiagnostics(state, resource) {
+  if (!resource) return null;
+  if (resource.kind === 'Pod' && !resource.spec?.nodeName && resource.status?.phase === 'Pending') {
+    return {type: 'scheduling', nodes: schedulingChecks(state, resource)};
+  }
+  if (resource.kind !== 'Service') return null;
+  const namespace = resource.metadata.namespace || 'default';
+  const selector = resource.spec?.selector;
+  const endpointNames = new Set((state.objects || [])
+    .filter(item => item.kind === 'EndpointSlice' && (item.metadata.namespace || 'default') === namespace
+      && item.metadata.labels?.['kubernetes.io/service-name'] === resource.metadata.name)
+    .flatMap(slice => slice.endpoints || []).map(endpoint => endpoint.targetRef?.name).filter(Boolean));
+  const selectedPods = selector ? (state.objects || []).filter(item => item.kind === 'Pod'
+    && (item.metadata.namespace || 'default') === namespace && matches(item.metadata.labels, selector)) : [];
+  const ports = (resource.spec?.ports || []).map(port => ({
+    port: port.port, targetPort: port.targetPort ?? port.port,
+    declarations: selectedPods.map(pod => {
+      const containers = pod.spec.containers || [];
+      const declared = containers.flatMap(container => container.ports || []);
+      const target = port.targetPort ?? port.port;
+      return {pod: pod.metadata.name, known: declared.length > 0,
+        matches: declared.some(item => item.name === target || Number(item.containerPort) === Number(target))};
+    }),
+  }));
+  const policies = (state.objects || []).filter(item => item.kind === 'NetworkPolicy'
+    && (item.metadata.namespace || 'default') === namespace
+    && (item.spec.policyTypes || ['Ingress']).includes('Ingress')
+    && selectedPods.some(pod => matches(pod.metadata.labels, item.spec.podSelector?.matchLabels || {})))
+    .map(policy => policy.metadata.name).sort();
+  return {type: 'service', namespace, selector, ports, policies,
+    pods: selectedPods.map(pod => ({name: pod.metadata.name, ready: pod.status?.ready === true,
+      reason: pod.status?.reason || pod.status?.phase || '', endpoint: endpointNames.has(pod.metadata.name)}))};
 }
