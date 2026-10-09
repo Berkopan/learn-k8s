@@ -1,0 +1,25 @@
+/* Suggestions appear only after Tab; the command line stays the main control. */
+.terminal-completions {
+  padding: 3px 14px 9px;
+  border-top: 1px solid var(--line);
+}
+.terminal-completions > button {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 7px;
+  border-left: 2px solid transparent;
+  color: var(--terminal-muted);
+  font: 17px/1.2 var(--mono);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.terminal-completions > button[aria-pressed='true'] {
+  border-left-color: var(--terminal-ink);
+  background: var(--accent-soft);
+  color: var(--terminal-ink);
+}
+.terminal-completions code { font: inherit; }
+@media (pointer: coarse) {
+  .terminal-completions > button { min-height: 36px; }
+}

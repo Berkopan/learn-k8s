@@ -34,3 +34,26 @@ test('YAML drafts survive tool tabs, file switches and new files', async ({page}
   await page.getByLabel('Laboratuvar dosyası', {exact: true}).selectOption('second.yaml');
   await expect(editor).toHaveValue('# another unfinished file');
 });
+
+test('Tab cycles real resource names and Shift+Tab still leaves the terminal input', async ({page}) => {
+  await openLab(page);
+  const input = page.getByRole('textbox', {name: 'Terminal komutu', exact: true});
+  for (const name of ['qa-alpha', 'qa-beta']) {
+    await input.fill(`kubectl create deployment ${name} --image=nginx:1.27`);
+    await input.press('Enter');
+  }
+  await input.fill('kubectl describe deployment qa-');
+  await input.press('Tab');
+  await expect(input).toHaveValue('kubectl describe deployment qa-alpha');
+  await expect(page.getByRole('group', {name: 'Komut önerileri'})).toBeVisible();
+  await input.press('Tab');
+  await expect(input).toHaveValue('kubectl describe deployment qa-beta');
+  await input.press('Tab');
+  await expect(input).toHaveValue('kubectl describe deployment qa-alpha');
+  await input.press('Shift+Tab');
+  await expect(page.getByLabel('Terminal çıktısı', {exact: true})).toBeFocused();
+  await expect(page.getByRole('group', {name: 'Komut önerileri'})).toHaveCount(0);
+  await input.fill('no-completion-for-this');
+  await input.press('Tab');
+  await expect(page.getByRole('button', {name: 'Komutu çalıştır', exact: true})).toBeFocused();
+});

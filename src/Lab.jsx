@@ -4,24 +4,68 @@ import {contextDockerSuggestions} from './command-help.js';
 import React,{useEffect,useRef,useState} from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import {stringify} from 'yaml';
-import {fileDraft,updateFileDraft,parseManifestDraft} from './workbench.js';
+import {fileDraft,updateFileDraft,parseManifestDraft,commandCompletions} from './workbench.js';
 import {objects,quantity,suggestionWords} from './engine.js';
 import {Icon} from './icons.jsx';
 import {IconButton,Modal,Status,download} from './ui.jsx';
 
-export function Terminal({entries,onCommand,command,setCommand,state,inputRef,history,level}){
+export function Terminal({entries,onCommand,command,setCommand,state,inputRef,history,level}) {
  const bottom=useRef(null),[cursor,setCursor]=useState(history.length),[draft,setDraft]=useState(''),[completion,setCompletion]=useState(null);
  useEffect(()=>{const output=bottom.current?.parentElement;if(output)output.scrollTop=output.scrollHeight;},[entries]);
  useEffect(()=>{setCursor(history.length);},[history]);
- function key(e){
-  if(e.key==='ArrowUp'){e.preventDefault();if(cursor===history.length)setDraft(command);const next=Math.max(0,cursor-1);setCursor(next);setCommand(history[next]||'');}
-  if(e.key==='ArrowDown'){e.preventDefault();const next=Math.min(history.length,cursor+1);setCursor(next);setCommand(next===history.length?draft:history[next]);}
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='l'){e.preventDefault();onCommand('clear');}
-  if(e.ctrlKey&&e.key.toLowerCase()==='c'){e.preventDefault();setCommand('');setCompletion(['Giriş temizlendi.']);}
-  if(e.key==='Tab'&&!e.shiftKey){const pool=[...contextDockerSuggestions(state),...suggestionWords,...Object.keys(state.files).map(f=>`kubectl apply -f ${f}`),...Object.keys(state.files).map(f=>`cat ${f}`),...objects(state,'Pod',state.namespace).flatMap(p=>[`kubectl describe pod ${p.metadata.name}`,`kubectl logs ${p.metadata.name}`])];const hits=[...new Set(pool.filter(s=>s.startsWith(command)&&s!==command))];if(hits.length){e.preventDefault();setCommand(hits[0]);setCompletion(hits.length>1?['{0} öneri • ilk eşleşme tamamlandı',[hits.length]]:['Komut tamamlandı.']);}}
+ const completionMessage=completion?.candidates
+  ? completion.candidates.length>1?t('{0}/{1} öneri · Tab değiştirir · Esc kapatır',[completion.index+1,completion.candidates.length]):t('Komut tamamlandı.')
+  : completion?.message?t(completion.message):t('Ctrl+L temizle · tek komut / Enter');
+ function key(event){
+  if(event.key==='ArrowUp'){
+   event.preventDefault();setCompletion(null);
+   if(cursor===history.length)setDraft(command);
+   const next=Math.max(0,cursor-1);setCursor(next);setCommand(history[next]||'');return;
+  }
+  if(event.key==='ArrowDown'){
+   event.preventDefault();setCompletion(null);
+   const next=Math.min(history.length,cursor+1);setCursor(next);setCommand(next===history.length?draft:history[next]);return;
+  }
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='l'){
+   event.preventDefault();setCompletion(null);onCommand('clear');return;
+  }
+  if(event.ctrlKey&&event.key.toLowerCase()==='c'){
+   if(event.target.selectionStart!==event.target.selectionEnd)return;
+   event.preventDefault();setCommand('');setCompletion({message:'Giriş temizlendi.'});return;
+  }
+  if(event.key==='Escape'&&completion){event.preventDefault();setCompletion(null);return;}
+  if(event.key!=='Tab')return;
+  if(event.shiftKey){setCompletion(null);return;}
+  // Editing the middle of a command keeps ordinary keyboard navigation.
+  if(event.target.selectionStart!==command.length||event.target.selectionEnd!==command.length)return;
+  const cycling=completion?.candidates?.[completion.index]===command;
+  if(cycling&&completion.candidates.length===1){setCompletion(null);return;}
+  const candidates=cycling?completion.candidates:commandCompletions(command,state,[...contextDockerSuggestions(state),...suggestionWords]);
+  if(!candidates.length){setCompletion(null);return;}
+  event.preventDefault();
+  const index=cycling?(completion.index+1)%candidates.length:0;
+  setCommand(candidates[index]);setCompletion({candidates,index});
  }
- function submit(e){e.preventDefault();if(!command.trim())return;onCommand(command.trim());setCommand('');setCompletion(null);setDraft('');}
- return <section className="terminal" aria-label={t('Simüle terminal')}><div className="terminal-bar"><span className="terminal-dots"><i/><i/><i/></span><span>learner@{state.context} <b>~</b></span></div><div className="terminal-output" tabIndex={0} aria-label={t('Terminal çıktısı')}><div className="terminal-welcome"><span>learn-k8s / lab {String(level.id).padStart(3,'0')}</span><p>{t('Gerçek shell değil. Güvenle dene, değişimi izle.')}<br/><em>help</em> {t('komutları gösterir.')} <em>↑ ↓</em> {t('geçmiş ·')} <em>Tab</em> {t('tamamlama')}</p>{level.module===0&&<p className="terminal-docker-help">{t('Docker yardımı: help docker · docker run --help')}</p>}</div>{entries.map((entry,i)=><div className={`terminal-entry ${entry.error?'terminal-error':''}`} key={i}><div className="echo">{entry.command}</div>{entry.output&&<pre>{terminalOutput(entry)}</pre>}</div>)}<span ref={bottom}/></div><form className="terminal-input-row" onSubmit={submit}><label htmlFor="terminal-input" className="sr-only">{t('Terminal komutu')}</label><input id="terminal-input" ref={inputRef} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} value={command} onChange={e=>setCommand(e.target.value)} onKeyDown={key} placeholder={t('Bir komut yaz…')}/><button type="submit" aria-label={t('Komutu çalıştır')}><Icon name="arrow" size={14}/></button></form><div className="terminal-footer"><span><i/> namespace: {state.namespace}</span><span>{completion?t(completion[0],completion[1]||[]):t('Ctrl+L temizle · tek komut / Enter')}</span></div><div className="sr-only" role="status" aria-live="polite">{entries.at(-1)?.error?t('Komut hatası. '):''}{terminalOutput(entries.at(-1)).slice(0,250)}</div></section>;
+ function submit(event){event.preventDefault();if(!command.trim())return;onCommand(command.trim());setCommand('');setCompletion(null);setDraft('');}
+ const candidateStart=completion?.candidates?Math.max(0,Math.min(completion.index-2,completion.candidates.length-5)):0;
+ return <section className="terminal" aria-label={t('Simüle terminal')}>
+  <div className="terminal-bar"><span className="terminal-dots"><i/><i/><i/></span><span>learner@{state.context} <b>~</b></span></div>
+  <div className="terminal-output" tabIndex={0} aria-label={t('Terminal çıktısı')}>
+   <div className="terminal-welcome"><span>learn-k8s / lab {String(level.id).padStart(3,'0')}</span><p>{t('Gerçek shell değil. Güvenle dene, değişimi izle.')}<br/><em>help</em> {t('komutları gösterir.')} <em>↑ ↓</em> {t('geçmiş ·')} <em>Tab</em> {t('tamamlama')}</p>{level.module===0&&<p className="terminal-docker-help">{t('Docker yardımı: help docker · docker run --help')}</p>}</div>
+   {entries.map((entry,index)=><div className={`terminal-entry ${entry.error?'terminal-error':''}`} key={index}><div className="echo">{entry.command}</div>{entry.output&&<pre>{terminalOutput(entry)}</pre>}</div>)}
+   <span ref={bottom}/>
+  </div>
+  <form className="terminal-input-row" onSubmit={submit}>
+   <label htmlFor="terminal-input" className="sr-only">{t('Terminal komutu')}</label>
+   <input id="terminal-input" ref={inputRef} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} value={command} onChange={event=>{setCommand(event.target.value);setCompletion(null);}} onKeyDown={key} placeholder={t('Bir komut yaz…')} aria-describedby={completion?'terminal-completion-status':undefined}/>
+   <button type="submit" aria-label={t('Komutu çalıştır')}><Icon name="arrow" size={14}/></button>
+  </form>
+  {completion?.candidates?.length>1&&<div className="terminal-completions" role="group" aria-label={t('Komut önerileri')}>
+   {completion.candidates.slice(candidateStart,candidateStart+5).map((candidate,index)=><button type="button" tabIndex={-1} key={candidate} aria-pressed={candidateStart+index===completion.index} onMouseDown={event=>event.preventDefault()} onClick={()=>{setCommand(candidate);setCompletion(null);inputRef.current?.focus();}}><code>{candidate.trimEnd()}</code></button>)}
+  </div>}
+  <div className="terminal-footer"><span><i/> namespace: {state.namespace}</span><span id="terminal-completion-status" aria-live="polite">{completionMessage}</span></div>
+  <div className="sr-only" role="status" aria-live="polite">{entries.at(-1)?.error?t('Komut hatası. '):''}{terminalOutput(entries.at(-1)).slice(0,250)}</div>
+ </section>;
 }
 const resourceLabel=r=>r.status?.reason||r.status?.phase||(r.kind==='Deployment'?t('{0}/{1} hazır',[r.status?.readyReplicas||0,r.spec.replicas??1]):r.kind==='Job'?t('{0} tamamlandı',[r.status?.succeeded||0]):r.kind==='Service'?r.spec.type||'ClusterIP':r.kind==='Node'?(r.spec.unschedulable?'SchedulingDisabled':'Ready'):t('Tanımlı'));
 export function Cluster({state,level,traceIndex,sequence,inspect}){
