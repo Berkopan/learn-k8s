@@ -15,9 +15,10 @@ for(const mode of ['client','server']){
       const result=run(state,`${command} --dry-run=${mode}`);
       assert.equal(result.error,false,result.output);
       assert.match(result.output,/dry run/);
-      const {trace:beforeTrace,...before}=state,{trace:afterTrace,...after}=result.state;
+      const {trace:beforeTrace,events:beforeEvents,...before}=state,{trace:afterTrace,events:afterEvents,...after}=result.state;
       assert.deepEqual(after,before);
       assert.equal(result.event.action,'dry-run');
+      assert.deepEqual(afterEvents,[...beforeEvents,result.event]);
       assert.equal(goalMet(result.state,{type:'event',match:{action:result.event.operation}}),false);
     });
   }
@@ -34,6 +35,17 @@ test('dry-run YAML/JSON shows the requested resource, without controller output 
   assert.match(created.output,/kind: "Deployment"/);
   assert.doesNotMatch(created.output,/dry run|_sim|readyReplicas/);
   assert.equal(find(created.state,'Deployment','sample'),undefined);
+});
+
+test('a dry-run observation can complete the draft lesson without creating its Deployment',()=>{
+  const state=createLab();
+  const result=run(state,'kubectl create deployment web --image=nginx:1.27 --dry-run=client -o yaml');
+  assert.equal(result.error,false,result.output);
+  assert.equal(goalMet(result.state,{type:'all',goals:[
+    {type:'event',match:{action:'dry-run',kind:'Deployment',name:'web'}},
+    {type:'absent',kind:'Deployment',name:'web'}
+  ]}),true);
+  assert.equal(goalMet(result.state,{type:'event',match:{action:'create'}}),false);
 });
 
 test('dry-run none executes normally and output flags print applied resources',()=>{

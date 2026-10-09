@@ -184,7 +184,7 @@ export function run(state,input) {
     const {out,event}=execute(next,invocation);
     if(invocation.binary==='kubectl'&&['client','server'].includes(mode)&&event?.action!=='help'){
       const dryEvent={...event,action:'dry-run',operation:event.action,mode};
-      return {state:{...state,trace:[{actor:'API / CLI',text:`Dry run (${mode}): küme durumu değiştirilmedi.`,tone:'normal'}]},output:event.output?out:`${out} (dry run: ${mode})`,error:false,event:dryEvent};
+      return {state:{...state,events:[...state.events,dryEvent].slice(-250),trace:[{actor:'API / CLI',text:`Dry run (${mode}): küme durumu değiştirilmedi.`,tone:'normal'}]},output:event.output?out:`${out} (dry run: ${mode})`,error:false,event:dryEvent};
     }
     if(event)next.events.push(event);next.events=next.events.slice(-250);if(!next.trace.length)pushTrace(next,'Terminal',event?.action==='help'?'Komut referansı açıldı.':'İşlem tamamlandı; kaynak durumu korundu.');return {state:next,output:out,error:false,event};
   }
